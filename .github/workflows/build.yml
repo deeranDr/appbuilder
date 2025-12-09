@@ -18,6 +18,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 🧩 Fix missing libintl.8.dylib on macOS runners
+      - name: Install gettext for Python runtime
+        run: |
+          echo "🔧 Installing gettext for macOS 15..."
+          brew update
+          brew install gettext
+          brew link gettext --force
+          # Export library/include paths for later steps
+          echo "LDFLAGS=-L/usr/local/opt/gettext/lib"  >> $GITHUB_ENV
+          echo "CPPFLAGS=-I/usr/local/opt/gettext/include" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/usr/local/opt/gettext/lib/pkgconfig" >> $GITHUB_ENV
+
       # Set up Python
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -276,6 +288,19 @@ jobs:
                    -D app_path="dmg-build/PremediaApp.app" \
                    "PremediaApp" dist/PremediaApp.dmg
         shell: bash
+
+      - name: ☁️ Upload macOS Build to S3
+        run: |
+          echo "Uploading macOS DMG and version metadata..."
+          aws s3 cp dist/PremediaApp.dmg s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.6.dmg --acl public-read
+          aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read
+          echo "✅ macOS build uploaded successfully."
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-2
+
+
 
       # Upload DMG artifact
       - name: Upload DMG Artifact
@@ -792,22 +817,11 @@ jobs:
           echo "Status: Digitally signed and verified" >> Output/release_notes.txt
         shell: powershell
 
-      - name: ☁️ Upload macOS Build to S3
-        run: |
-          echo "Uploading macOS DMG and version metadata..."
-          aws s3 cp dist/PremediaApp.dmg s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.5.dmg --acl public-read
-          aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read
-          echo "✅ macOS build uploaded successfully."
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: us-east-2
-
       - name: ☁️ Upload Windows Build to S3
         run: |
           echo "Uploading Windows EXE, changelog, and version metadata..."
-          aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.5.exe --acl public-read
-          aws s3 cp Output/release_notes.txt s3://vmg-premedia-22112023/application/drn/changelogs/changelog_1.1.5.txt --acl public-read
+          aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.6.exe --acl public-read
+          aws s3 cp Output/release_notes.txt s3://vmg-premedia-22112023/application/drn/changelogs/changelog_1.1.6.txt --acl public-read
           aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read
           echo "✅ Windows build uploaded successfully."
         env:
