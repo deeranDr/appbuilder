@@ -3,7 +3,8 @@ import os, sys, json, tempfile, subprocess, hashlib, platform, requests, tkinter
 from tkinter import messagebox
 
 # CloudFront base URL
-VERSION_URL = "https://d16fzx5hhs0dp6.cloudfront.net/app-updates/version.json"
+VERSION_URL = "https://vmg-premedia-22112023.s3.ap-southeast-2.amazonaws.com/application/drn/latest_version.json"
+
 
 def sha256(path):
     h = hashlib.sha256()
