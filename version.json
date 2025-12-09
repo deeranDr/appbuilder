@@ -1,0 +1,8 @@
+{
+  "version": "1.1.4",
+  "windows_url": "https://d16fzx5hhs0dp6.cloudfront.net/app-updates/PremediaApp_v1.1.4.exe",
+  "mac_url": "https://d16fzx5hhs0dp6.cloudfront.net/app-updates/PremediaApp_v1.1.4.dmg",
+  "sha256": "AABBCCDD112233...",
+  "release_notes": "Minor bug fixes and UI improvements",
+  "mandatory": false
+}

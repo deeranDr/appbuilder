@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=PremediaApp
+Comment=Image Retouching Application
+Exec=/usr/bin/python3 /opt/PremediaApp/main.py
+Type=Application
+Terminal=false
+Icon=/opt/PremediaApp/icons/premedia.png
+Categories=Utility;Graphics;
