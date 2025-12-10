@@ -249,7 +249,7 @@ jobs:
       - name: ☁️ Upload macOS Build to S3
         run: |
           echo "Uploading macOS DMG and version metadata..."
-          aws s3 cp dist/PremediaApp.dmg s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.8.dmg --acl public-read
+          aws s3 cp dist/PremediaApp.dmg s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.9.dmg --acl public-read
           aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read
           echo "✅ macOS build uploaded successfully."
         env:
@@ -633,6 +633,35 @@ jobs:
           echo "Running PyInstaller with .spec at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
           & python -m PyInstaller app.spec --noconfirm --log-level=DEBUG | Tee-Object -FilePath "$env:GITHUB_WORKSPACE/pyinstaller_output.log"
         shell: pwsh
+# -------------------------------------------------->
+      # ⚙️ Build updater.exe
+      - name: Build updater helper
+        run: |
+          echo "Building updater.exe..."
+          & python -m PyInstaller --onefile updater.py
+          echo "✅ updater.exe built successfully"
+        shell: pwsh
+
+      # 📦 Copy updater.exe into final app folder
+      - name: Copy updater.exe into build folder
+        run: |
+          echo "Copying updater.exe into dist/PremediaApp"
+          Copy-Item -Path "dist\updater.exe" -Destination "dist\PremediaApp\" -Force
+          echo "✅ updater.exe copied into build folder"
+          dir dist\PremediaApp
+        shell: pwsh
+
+      # 🧩 Verify updater presence
+      - name: Verify updater.exe included
+        run: |
+          if (-not (Test-Path "dist\PremediaApp\updater.exe")) {
+            echo "❌ updater.exe missing in dist folder!"
+            exit 1
+          } else {
+            echo "✅ updater.exe present in dist/PremediaApp"
+          }
+        shell: pwsh
+# ------------------------------------------------->
 
 
       # Upload PyInstaller log
@@ -777,8 +806,8 @@ jobs:
       - name: ☁️ Upload Windows Build to S3
         run: |
           echo "Uploading Windows EXE, changelog, and version metadata..."
-          aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.8.exe --acl public-read
-          aws s3 cp Output/release_notes.txt s3://vmg-premedia-22112023/application/drn/changelogs/changelog_1.1.8.txt --acl public-read
+          aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.9.exe --acl public-read
+          aws s3 cp Output/release_notes.txt s3://vmg-premedia-22112023/application/drn/changelogs/changelog_1.1.9.txt --acl public-read
           aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read
           echo "✅ Windows build uploaded successfully."
         env:
