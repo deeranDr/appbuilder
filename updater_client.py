@@ -44,8 +44,10 @@ def check_for_update(current_version, exe_path):
                 print(f"Downloading update: {url}")
                 with open(tmp, "wb") as f:
                     f.write(requests.get(url).content)
-
-                if sha256(tmp) == data.get("sha256"):
+                print(f"Downloaded to: {tmp}")
+                print(data.get("sha256", ")"))
+                if sha256(tmp).strip().upper() == data.get("sha256", "").strip().upper():
+                    print("Update downloaded successfully.")
                     if os_type == "Windows":
                         subprocess.Popen(["updater.exe", exe_path, tmp])
                         sys.exit(0)

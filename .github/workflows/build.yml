@@ -18,17 +18,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 🧩 Fix missing libintl.8.dylib on macOS runners
-      - name: Install gettext for Python runtime
+      # 🧩 Fix missing libintl.8.dylib on macOS 15 runners
+      - name: Install gettext for Python runtime (macOS 15 fix)
         run: |
           echo "🔧 Installing gettext for macOS 15..."
           brew update
           brew install gettext
-          brew link gettext --force
-          # Export library/include paths for later steps
-          echo "LDFLAGS=-L/usr/local/opt/gettext/lib"  >> $GITHUB_ENV
-          echo "CPPFLAGS=-I/usr/local/opt/gettext/include" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/usr/local/opt/gettext/lib/pkgconfig" >> $GITHUB_ENV
+          
+          # Ensure compatibility path for Python binary
+          sudo mkdir -p /usr/local/opt
+          sudo ln -sf /opt/homebrew/opt/gettext /usr/local/opt/gettext
+
+          # Export environment paths for gettext
+          echo "LDFLAGS=-L/opt/homebrew/opt/gettext/lib" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I/opt/homebrew/opt/gettext/include" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/opt/homebrew/opt/gettext/lib/pkgconfig" >> $GITHUB_ENV
+          echo "✅ gettext installed and linked successfully."
 
       # Set up Python
       - name: Set up Python
@@ -143,54 +148,6 @@ jobs:
           test -f cache/cache.json || (echo "❌ cache.json missing" && exit 1)
         shell: bash
 
-      # # Build app with PyInstaller
-      # - name: Build App with PyInstaller
-      #   run: |
-      #     echo "Starting PyInstaller build at $(date)"
-      #     echo "Checking syntax of app.py..."
-      #     python -m py_compile app.py || (echo "❌ Syntax error in app.py" && exit 1)
-      #     echo "Finding PySide6 plugins..."
-      #     python -c "import PySide6; import os; plugins_path = os.path.join(os.path.dirname(PySide6.__file__), 'Qt/plugins'); print(plugins_path)" > plugins_path.txt
-      #     export PYSIDE6_PLUGINS=$(cat plugins_path.txt)
-      #     echo "PYSIDE6_PLUGINS=$PYSIDE6_PLUGINS"
-      #     ls -ld "$PYSIDE6_PLUGINS/platforms" || (echo "❌ Platforms directory not found at $PYSIDE6_PLUGINS/platforms" && exit 1)
-      #     ls -ld "$PYSIDE6_PLUGINS/imageformats" || (echo "❌ Imageformats directory not found at $PYSIDE6_PLUGINS/imageformats" && exit 1)
-      #     echo "Running PyInstaller..."
-      #     python -m PyInstaller --log-level=DEBUG --noconfirm --windowed --onedir \
-      #       --name PremediaApp \
-      #       --icon=icons/premedia.icns \
-      #       --add-data "cache/cache.json:cache" \
-      #       --add-data "icons/premedia.icns:icons" \
-      #       --add-data "icons/photoshop.png:icons" \
-      #       --add-data "icons/folder.png:icons" \
-      #       --add-data "icons/premedia.png:icons" \
-      #       --add-data "icons/vmg-premedia-logo.png:icons" \
-      #       --add-data "terms.txt:." \
-      #       --add-data "license.txt:." \
-      #       --add-data "login.ui:." \
-      #       --add-data "premediaapp.ui:." \
-      #       --add-data "icons.qrc:." \
-      #       --add-data "icons_rc.py:." \
-      #       --add-data "login.py:." \
-      #       --add-data "$PYSIDE6_PLUGINS/platforms:PySide6/Qt/plugins/platforms" \
-      #       --add-data "$PYSIDE6_PLUGINS/imageformats:PySide6/Qt/plugins/imageformats" \
-      #       --hidden-import=paramiko \
-      #       --hidden-import=requests \
-      #       --hidden-import=cryptography \
-      #       --hidden-import=tzdata \
-      #       --hidden-import=PySide6.QtWidgets \
-      #       --hidden-import=PySide6.QtCore \
-      #       --hidden-import=PySide6.QtGui \
-      #       --hidden-import=PySide6.uic \
-      #       --hidden-import=PIL.Image \
-      #       --hidden-import=login \
-      #       --hidden-import=icons_rc \
-      #       --runtime-hook=runtime-hook.py \
-      #       app.py > pyinstaller.log 2>&1 || (echo "PyInstaller failed" && cat pyinstaller.log && exit 1)
-      #     echo "📁 dist/ contents:"
-      #     ls -lh dist
-      #     echo "PyInstaller build completed at $(date)"
-      #   shell: bash
 
             # Build app with PyInstaller
       - name: Build App with PyInstaller
@@ -828,7 +785,6 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: us-east-2
-
 
       - name: Upload release notes
         uses: actions/upload-artifact@v4
