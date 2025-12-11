@@ -250,12 +250,13 @@ jobs:
         run: |
           echo "Uploading macOS DMG and version metadata..."
           aws s3 cp dist/PremediaApp.dmg s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.15.dmg --acl public-read
-          aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read
+          aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read --cache-control "no-cache, max-age=60"
           echo "✅ macOS build uploaded successfully."
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: us-east-2
+          AWS_DEFAULT_REGION: ap-southeast-2
+
 
 
 
@@ -626,7 +627,13 @@ jobs:
           }
         shell: powershell
 
-
+      # ✅ Install psutil for updater.py
+      - name: Install psutil (required for updater.exe)
+        run: |
+          echo "Installing psutil for updater build..."
+          python -m pip install psutil --no-cache-dir --force-reinstall --verbose
+          echo "✅ psutil installed successfully."
+        shell: powershell
 
       - name: 🏗️ Build with PyInstaller
         run: |
@@ -803,17 +810,38 @@ jobs:
           echo "Status: Digitally signed and verified" >> Output/release_notes.txt
         shell: powershell
 
+      # 🧾 Generate version.json automatically
+      - name: Generate version.json
+        run: |
+          echo "Generating version.json for auto-update..."
+          $version = "1.1.15"
+          $hash = (Get-FileHash Output/PremediaApp-Setup.exe -Algorithm SHA256).Hash
+          $json = @{
+            version = $version
+            windows_url = "https://vmg-premedia-22112023.s3.ap-southeast-2.amazonaws.com/application/drn/windows/PremediaApp_v$version.exe"
+            mac_url = "https://vmg-premedia-22112023.s3.ap-southeast-2.amazonaws.com/application/drn/macos/PremediaApp_v$version.dmg"
+            sha256 = $hash
+            release_notes = "Performance improvements and stability fixes"
+            mandatory = $false
+          } | ConvertTo-Json -Depth 3
+          $json | Out-File -FilePath version.json -Encoding utf8
+          Get-Content version.json
+        shell: powershell
+
+
       - name: ☁️ Upload Windows Build to S3
         run: |
           echo "Uploading Windows EXE, changelog, and version metadata..."
           aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.15.exe --acl public-read
           aws s3 cp Output/release_notes.txt s3://vmg-premedia-22112023/application/drn/changelogs/changelog_1.1.15.txt --acl public-read
-          aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read
+          aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read --cache-control "no-cache, max-age=60"
+
           echo "✅ Windows build uploaded successfully."
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: us-east-2
+          AWS_DEFAULT_REGION: ap-southeast-2
+
 
       - name: Upload release notes
         uses: actions/upload-artifact@v4
