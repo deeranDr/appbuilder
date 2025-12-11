@@ -23,6 +23,10 @@ def main():
     if len(sys.argv) < 3:
         print("Usage: updater.exe <old_path> <new_path>")
         sys.exit(1)
+        
+    # --- Fix duplicate self path added by ShellExecuteW ---
+    if len(sys.argv) >= 4 and sys.argv[1].endswith("updater.exe"):
+        sys.argv.pop(1)        
 
     # Correct argument mapping
     new_path = sys.argv[1]  # The new downloaded file (from temp)
