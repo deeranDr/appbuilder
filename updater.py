@@ -71,52 +71,60 @@ def main():
         print("Usage: updater.exe <old_path> <new_path>")
         sys.exit(1)
 
-    old_path = sys.argv[1]
-    new_path = sys.argv[2]
+    # 🔹 Correct argument mapping
+    old_path = sys.argv[1]  # The currently installed app (e.g. PremediaApp.exe)
+    new_path = sys.argv[2]  # The newly downloaded file in temp
 
-    run_as_admin()  # ensure elevation
+    # 🔹 Ensure elevated privileges
+    run_as_admin()
 
     log_path = os.path.join(os.path.dirname(old_path), "update_log.txt")
+
     with open(log_path, "a", encoding="utf-8") as log:
         log.write(f"\n[{time.ctime()}] ======== UPDATE START ========\n")
         log.write(f"Old: {old_path}\nNew: {new_path}\n")
 
-        # 🔹 Wait until main EXE fully closes
-        for i in range(30):   # wait up to 30 seconds
+        # 🔹 Step 1: Wait until old app fully exits
+        for i in range(30):  # wait up to 30 seconds
             try:
-                os.rename(old_path, old_path)  # test if file is still locked
+                os.rename(old_path, old_path)  # test if file is free
                 log.write("✅ File lock released.\n")
                 break
             except PermissionError:
-                log.write("⏳ Waiting for main app to close...\n")
+                log.write(f"⏳ Waiting for app to close... ({i+1}/30)\n")
                 time.sleep(1)
         else:
-            log.write("❌ Timeout waiting for file lock.\n")
+            log.write("❌ Timeout: app did not close in 30 seconds.\n")
             sys.exit(1)
 
-        # 🔹 Copy new EXE over old one
+        # 🔹 Step 2: Copy new version → old app location
         try:
+            if not os.path.exists(new_path):
+                log.write(f"❌ New file missing: {new_path}\n")
+                sys.exit(1)
+
             shutil.copy2(new_path, old_path)
             log.write("✅ New version copied successfully.\n")
         except Exception as e:
             log.write(f"❌ Copy failed: {e}\n{traceback.format_exc()}\n")
             sys.exit(1)
 
-        # 🔹 Remove the temporary update file
+        # 🔹 Step 3: Delete temp file safely
         try:
             os.remove(new_path)
             log.write("🧹 Temp file removed.\n")
         except Exception as e:
             log.write(f"⚠️ Could not delete temp file: {e}\n")
 
-        # 🔹 Relaunch the new version
+        # 🔹 Step 4: Relaunch the updated app
         try:
-            subprocess.Popen([old_path])
-            log.write("🚀 Relaunched new version.\n")
+            subprocess.Popen([old_path], shell=False)
+            log.write("🚀 Relaunched new version successfully.\n")
         except Exception as e:
             log.write(f"❌ Relaunch failed: {e}\n{traceback.format_exc()}\n")
 
         log.write("✅ ======== UPDATE COMPLETE ========\n")
+
 
 if __name__ == "__main__":
     main()
