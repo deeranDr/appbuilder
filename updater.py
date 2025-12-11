@@ -24,9 +24,9 @@ def main():
         print("Usage: updater.exe <old_path> <new_path>")
         sys.exit(1)
 
-    # 🔹 Correct argument mapping
-    old_path = sys.argv[1]  # The currently installed app (e.g. PremediaApp.exe)
-    new_path = sys.argv[2]  # The newly downloaded file in temp
+    # Correct argument mapping
+    new_path = sys.argv[1]  # The new downloaded file (from temp)
+    old_path = sys.argv[2]  # The currently installed app (PremediaApp.exe)
 
     # 🔹 Ensure elevated privileges
     run_as_admin()
