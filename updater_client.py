@@ -251,38 +251,36 @@ def check_for_update(current_version, exe_path):
             messagebox.showerror("Update Error", "Checksum mismatch. Download may be corrupted.")
             os.remove(tmp_file)
             return
-
-        # 🔹 Step 7: Launch updater.py (new system)
+        
+        # 🔹 Step 7: Launch updater (Windows)
         if os_type == "Windows":
-            import os, subprocess, sys
-
             bat_path = os.path.join(os.path.dirname(exe_path), "updater.bat")
-
-            # 1) Preflight checks (fail fast with clear message)
+            # Preflight checks
             missing = []
-            if not os.path.isfile(bat_path):  
+            if not os.path.isfile(bat_path):
                 missing.append(f"updater.bat not found: {bat_path}")
-            if not os.path.isfile(exe_path):  
+            if not os.path.isfile(exe_path):
                 missing.append(f"OLD_EXE not found: {exe_path}")
-            if not os.path.isfile(tmp_file):  
+            if not os.path.isfile(tmp_file):
                 missing.append(f"NEW_FILE not found: {tmp_file}")
             if missing:
-                from tkinter import messagebox
                 messagebox.showerror("Update Error", "\n".join(missing))
                 sys.exit(1)
+            print(f"[Updater] Launching BAT via PowerShell:")
+            print(f"  BAT: {bat_path}")
+            print(f"  OLD_EXE: {exe_path}")
+            print(f"  NEW_FILE: {tmp_file}")
 
-            # 2) Launch silently & safely via PowerShell (no black window, admin if needed)
             ps_cmd = (
                 'powershell -NoProfile -WindowStyle Hidden -Command '
-                f'$bat = "{bat_path}"; '
-                f'$old = "{exe_path}"; '
-                f'$new = "{tmp_file}"; '
-                'Start-Process -FilePath $bat -ArgumentList @($old,$new) -Verb RunAs'
+                f"$bat = '{bat_path}'; "
+                f"$old = '{exe_path}'; "
+                f"$new = '{tmp_file}'; "
+                "Start-Process -FilePath $bat -ArgumentList @($old,$new) -Verb RunAs"
             )
 
             subprocess.Popen(ps_cmd, shell=True)
             sys.exit(0)
-
 
         elif os_type == "Darwin":
             subprocess.Popen(["open", tmp_file])  # open DMG/pkg
