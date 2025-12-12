@@ -138,6 +138,164 @@
 
 
 
+# import os
+# import sys
+# import json
+# import time
+# import tempfile
+# import subprocess
+# import hashlib
+# import platform
+# import requests
+# import tkinter as tk
+# from tkinter import messagebox
+
+# # 🔹 S3 location of version file
+# VERSION_URL = "https://vmg-premedia-22112023.s3.ap-southeast-2.amazonaws.com/application/drn/latest_version.json"
+
+
+# # ====================================================
+# #  Utility functions
+# # ====================================================
+
+# def sha256(path):
+#     """Compute SHA256 checksum of a file."""
+#     h = hashlib.sha256()
+#     with open(path, "rb") as f:
+#         for chunk in iter(lambda: f.read(8192), b""):
+#             h.update(chunk)
+#     return h.hexdigest().upper()
+
+
+# def ask_user_to_update(latest):
+#     """Ask user if they want to update."""
+#     root = tk.Tk()
+#     root.withdraw()
+#     res = messagebox.askyesno(
+#         "Update Available",
+#         f"A new version {latest} is available.\nDo you want to update now?"
+#     )
+#     root.destroy()
+#     return res
+
+
+# # ====================================================
+# #  Main update logic
+# # ====================================================
+
+# def check_for_update(current_version, exe_path):
+#     """
+#     Check remote JSON for new version, download and apply update if needed.
+#     """
+#     try:
+#         # 🔹 Step 1: Fetch latest version JSON (with cache-busting)
+#         response = requests.get(f"{VERSION_URL}?t={int(time.time())}", timeout=8)
+#         data = response.json()
+#         latest_version = data.get("version", "").strip()
+
+#         if not latest_version:
+#             print("[Updater] ❌ No version info in JSON.")
+#             return
+
+#         print(f"[Updater] Current: {current_version} | Latest: {latest_version}")
+
+#         # 🔹 Step 2: Compare versions
+#         if latest_version == current_version:
+#             print("[Updater] ✅ Already up to date.")
+#             return
+
+#         # 🔹 Step 3: Ask user for confirmation (unless mandatory)
+#         mandatory = bool(data.get("mandatory"))
+#         if not mandatory:
+#             if not ask_user_to_update(latest_version):
+#                 print("[Updater] Skipped by user.")
+#                 return
+#         else:
+#             print("[Updater] Mandatory update enforced.")
+
+#         # 🔹 Step 4: Select correct OS download URL
+#         os_type = platform.system()
+#         if os_type == "Windows":
+#             download_url = data.get("windows_url")
+#         elif os_type == "Darwin":
+#             download_url = data.get("mac_url")
+#         else:
+#             messagebox.showinfo("Unsupported OS", "Auto-update is not supported on this OS.")
+#             return
+
+#         if not download_url:
+#             messagebox.showerror("Update Error", "Download URL missing in JSON.")
+#             return
+
+#         # 🔹 Step 5: Download new build
+#         print(f"[Updater] Downloading from: {download_url}")
+#         tmp_file = os.path.join(tempfile.gettempdir(), os.path.basename(download_url))
+
+#         with requests.get(download_url, stream=True, timeout=30) as r:
+#             r.raise_for_status()
+#             with open(tmp_file, "wb") as f:
+#                 for chunk in r.iter_content(chunk_size=8192):
+#                     if chunk:
+#                         f.write(chunk)
+
+#         print(f"[Updater] Downloaded to temp: {tmp_file}")
+
+#         # 🔹 Step 6: Verify SHA256 checksum
+#         expected_hash = data.get("sha256", "").strip().upper()
+#         actual_hash = sha256(tmp_file)
+
+#         print(f"[Updater] Expected SHA256: {expected_hash}")
+#         print(f"[Updater] Actual SHA256:   {actual_hash}")
+
+#         if expected_hash and actual_hash != expected_hash:
+#             messagebox.showerror("Update Error", "Checksum mismatch. Download may be corrupted.")
+#             os.remove(tmp_file)
+#             return
+        
+#         # 🔹 Step 7: Launch updater (Windows)
+#         if os_type == "Windows":
+#             bat_path = os.path.join(os.path.dirname(exe_path), "updater.bat")
+#             # Preflight checks
+#             missing = []
+#             if not os.path.isfile(bat_path):
+#                 missing.append(f"updater.bat not found: {bat_path}")
+#             if not os.path.isfile(exe_path):
+#                 missing.append(f"OLD_EXE not found: {exe_path}")
+#             if not os.path.isfile(tmp_file):
+#                 missing.append(f"NEW_FILE not found: {tmp_file}")
+#             if missing:
+#                 messagebox.showerror("Update Error", "\n".join(missing))
+#                 sys.exit(1)
+#             print(f"[Updater] Launching BAT via PowerShell:")
+#             print(f"  BAT: {bat_path}")
+#             print(f"  OLD_EXE: {exe_path}")
+#             print(f"  NEW_FILE: {tmp_file}")
+
+#             ps_cmd = (
+#                 'powershell -NoProfile -WindowStyle Hidden -Command '
+#                 f"$bat = '{bat_path}'; "
+#                 f"$old = '{exe_path}'; "
+#                 f"$new = '{tmp_file}'; "
+#                 "Start-Process -FilePath $bat -ArgumentList @($old,$new) -Verb RunAs"
+#             )
+
+#             subprocess.Popen(ps_cmd, shell=True)
+#             sys.exit(0)
+
+#         elif os_type == "Darwin":
+#             subprocess.Popen(["open", tmp_file])  # open DMG/pkg
+#             sys.exit(0)
+
+#     except requests.exceptions.RequestException as e:
+#         print(f"[Updater] Network error: {e}")
+#     except json.JSONDecodeError as e:
+#         print(f"[Updater] Invalid JSON file: {e}")
+#     except Exception as e:
+#         print(f"[Updater] Unexpected error: {e}")
+
+
+
+
 import os
 import sys
 import json
@@ -153,11 +311,9 @@ from tkinter import messagebox
 # 🔹 S3 location of version file
 VERSION_URL = "https://vmg-premedia-22112023.s3.ap-southeast-2.amazonaws.com/application/drn/latest_version.json"
 
-
 # ====================================================
-#  Utility functions
+# Utility functions
 # ====================================================
-
 def sha256(path):
     """Compute SHA256 checksum of a file."""
     h = hashlib.sha256()
@@ -165,7 +321,6 @@ def sha256(path):
         for chunk in iter(lambda: f.read(8192), b""):
             h.update(chunk)
     return h.hexdigest().upper()
-
 
 def ask_user_to_update(latest):
     """Ask user if they want to update."""
@@ -178,11 +333,9 @@ def ask_user_to_update(latest):
     root.destroy()
     return res
 
-
 # ====================================================
-#  Main update logic
+# Main update logic
 # ====================================================
-
 def check_for_update(current_version, exe_path):
     """
     Check remote JSON for new version, download and apply update if needed.
@@ -192,18 +345,18 @@ def check_for_update(current_version, exe_path):
         response = requests.get(f"{VERSION_URL}?t={int(time.time())}", timeout=8)
         data = response.json()
         latest_version = data.get("version", "").strip()
-
+        
         if not latest_version:
             print("[Updater] ❌ No version info in JSON.")
             return
-
+        
         print(f"[Updater] Current: {current_version} | Latest: {latest_version}")
-
+        
         # 🔹 Step 2: Compare versions
         if latest_version == current_version:
             print("[Updater] ✅ Already up to date.")
             return
-
+        
         # 🔹 Step 3: Ask user for confirmation (unless mandatory)
         mandatory = bool(data.get("mandatory"))
         if not mandatory:
@@ -212,7 +365,7 @@ def check_for_update(current_version, exe_path):
                 return
         else:
             print("[Updater] Mandatory update enforced.")
-
+        
         # 🔹 Step 4: Select correct OS download URL
         os_type = platform.system()
         if os_type == "Windows":
@@ -222,40 +375,39 @@ def check_for_update(current_version, exe_path):
         else:
             messagebox.showinfo("Unsupported OS", "Auto-update is not supported on this OS.")
             return
-
+        
         if not download_url:
             messagebox.showerror("Update Error", "Download URL missing in JSON.")
             return
-
+        
         # 🔹 Step 5: Download new build
         print(f"[Updater] Downloading from: {download_url}")
         tmp_file = os.path.join(tempfile.gettempdir(), os.path.basename(download_url))
-
+        
         with requests.get(download_url, stream=True, timeout=30) as r:
             r.raise_for_status()
             with open(tmp_file, "wb") as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
-
         print(f"[Updater] Downloaded to temp: {tmp_file}")
-
+        
         # 🔹 Step 6: Verify SHA256 checksum
         expected_hash = data.get("sha256", "").strip().upper()
         actual_hash = sha256(tmp_file)
-
         print(f"[Updater] Expected SHA256: {expected_hash}")
-        print(f"[Updater] Actual SHA256:   {actual_hash}")
-
+        print(f"[Updater] Actual SHA256: {actual_hash}")
+        
         if expected_hash and actual_hash != expected_hash:
             messagebox.showerror("Update Error", "Checksum mismatch. Download may be corrupted.")
             os.remove(tmp_file)
             return
         
-        # 🔹 Step 7: Launch updater (Windows)
+        # 🔹 Step 7: Launch updater.bat (FIXED: Proper PowerShell argument passing)
         if os_type == "Windows":
             bat_path = os.path.join(os.path.dirname(exe_path), "updater.bat")
-            # Preflight checks
+            
+            # Preflight checks (fail fast with clear message)
             missing = []
             if not os.path.isfile(bat_path):
                 missing.append(f"updater.bat not found: {bat_path}")
@@ -263,32 +415,46 @@ def check_for_update(current_version, exe_path):
                 missing.append(f"OLD_EXE not found: {exe_path}")
             if not os.path.isfile(tmp_file):
                 missing.append(f"NEW_FILE not found: {tmp_file}")
+            
             if missing:
                 messagebox.showerror("Update Error", "\n".join(missing))
                 sys.exit(1)
-            print(f"[Updater] Launching BAT via PowerShell:")
-            print(f"  BAT: {bat_path}")
-            print(f"  OLD_EXE: {exe_path}")
-            print(f"  NEW_FILE: {tmp_file}")
-
-            ps_cmd = (
-                'powershell -NoProfile -WindowStyle Hidden -Command '
-                f"$bat = '{bat_path}'; "
-                f"$old = '{exe_path}'; "
-                f"$new = '{tmp_file}'; "
-                "Start-Process -FilePath $bat -ArgumentList @($old,$new) -Verb RunAs"
-            )
-
-            subprocess.Popen(ps_cmd, shell=True)
+            
+            print(f"[Updater] Launching updater: {bat_path}")
+            print(f"[Updater] OLD_EXE: {exe_path}")
+            print(f"[Updater] NEW_FILE: {tmp_file}")
+            
+            # FIXED: Use array + proper PowerShell escaping for paths with spaces
+            ps_cmd = [
+                'powershell', '-NoProfile', '-WindowStyle', 'Hidden', '-Command',
+                f'${{bat = "{bat_path.replace(chr(92), chr(92)+chr(92))}"}}; '
+                f'${{old = "{exe_path.replace(chr(92), chr(92)+chr(92))}"}}; '
+                f'${{new = "{tmp_file.replace(chr(92), chr(92)+chr(92))}"}}; '
+                f'Start-Process -FilePath ${{bat}} -ArgumentList @(${{old}}, ${{new}}) -Verb RunAs'
+            ]
+            subprocess.Popen(ps_cmd, shell=False)
             sys.exit(0)
-
+        
         elif os_type == "Darwin":
             subprocess.Popen(["open", tmp_file])  # open DMG/pkg
             sys.exit(0)
-
+    
     except requests.exceptions.RequestException as e:
         print(f"[Updater] Network error: {e}")
     except json.JSONDecodeError as e:
         print(f"[Updater] Invalid JSON file: {e}")
     except Exception as e:
         print(f"[Updater] Unexpected error: {e}")
+
+if __name__ == "__main__":
+    # Get current exe path and version from command line or file
+    exe_path = os.path.abspath(sys.argv[0]) if len(sys.argv) < 2 else sys.argv[1]
+    
+    # Try to get version from exe filename or default
+    current_version = "unknown"
+    if "__version__" in globals():
+        current_version = __version__
+    elif hasattr(sys, 'version_info'):
+        pass  # Use embedded version or file parsing logic here
+    
+    check_for_update(current_version, exe_path)
