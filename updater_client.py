@@ -254,14 +254,13 @@ def check_for_update(current_version, exe_path):
 
         # 🔹 Step 7: Launch updater.py (new system)
         if os_type == "Windows":
-            updater_script = os.path.join(os.path.dirname(exe_path), "updater.py")
-
-            if not os.path.exists(updater_script):
-                messagebox.showerror("Update Error", f"Missing updater.py at:\n{updater_script}")
+            bat_path = os.path.join(os.path.dirname(exe_path), "updater.bat")
+            if not os.path.exists(bat_path):
+                messagebox.showerror("Update Error", f"Missing updater.bat at:\n{bat_path}")
                 return
 
-            print(f"[Updater] Launching updater: {updater_script}")
-            subprocess.Popen(["python", updater_script, tmp_file, exe_path])
+            print(f"[Updater] Launching updater BAT: {bat_path}")
+            subprocess.Popen(["cmd", "/c", "start", "", bat_path, tmp_file, exe_path])
             sys.exit(0)
 
         elif os_type == "Darwin":
