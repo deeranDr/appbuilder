@@ -249,7 +249,7 @@ jobs:
       - name: ☁️ Upload macOS Build to S3
         run: |
           echo "Uploading macOS DMG and version metadata..."
-          aws s3 cp dist/PremediaApp.dmg s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.43.dmg --acl public-read
+          aws s3 cp dist/PremediaApp.dmg s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.1.dmg --acl public-read
           aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read --cache-control "no-cache, max-age=60"
           echo "✅ macOS build uploaded successfully."
         env:
@@ -633,22 +633,8 @@ jobs:
           echo "Installing psutil for updater build..."
           python -m pip install psutil --no-cache-dir --force-reinstall --verbose
           echo "✅ psutil installed successfully."
+          python -c "import psutil; print('psutil version:', psutil.__version__)"
         shell: powershell
-
-      - name: Copy updater files into build folder
-        run: |
-          echo "🔍 Checking if dist/PremediaApp exists..."
-          if (-not (Test-Path "dist\PremediaApp")) {
-            echo "📁 Folder not found. Creating dist/PremediaApp..."
-            New-Item -ItemType Directory -Force -Path "dist\PremediaApp" | Out-Null
-          }
-          echo "Copying updater.py and updater.bat into dist/PremediaApp..."
-          Copy-Item -Path "updater.py" -Destination "dist\PremediaApp\" -Force
-          Copy-Item -Path "updater.bat" -Destination "dist\PremediaApp\" -Force
-          echo "✅ Updater files copied successfully."
-          dir dist\PremediaApp
-        shell: pwsh
-
 
       - name: 🏗️ Build with PyInstaller
         run: |
@@ -656,33 +642,33 @@ jobs:
           & python -m PyInstaller app.spec --noconfirm --log-level=DEBUG | Tee-Object -FilePath "$env:GITHUB_WORKSPACE/pyinstaller_output.log"
         shell: pwsh
 # -------------------------------------------------->
-      # # ⚙️ Build updater.exe
-      # - name: Build updater helper
-      #   run: |
-      #     echo "Building updater.exe..."
-      #     & python -m PyInstaller --onefile updater.py
-      #     echo "✅ updater.exe built successfully"
-      #   shell: pwsh
+      # ⚙️ Build updater.exe
+      - name: Build updater helper
+        run: |
+          echo "Building updater.exe..."
+          & python -m PyInstaller --onefile updater.py
+          echo "✅ updater.exe built successfully"
+        shell: pwsh
 
-      # # 📦 Copy updater.exe into final app folder
-      # - name: Copy updater.exe into build folder
-      #   run: |
-      #     echo "Copying updater.exe into dist/PremediaApp"
-      #     Copy-Item -Path "dist\updater.exe" -Destination "dist\PremediaApp\" -Force
-      #     echo "✅ updater.exe copied into build folder"
-      #     dir dist\PremediaApp
-      #   shell: pwsh
+      # 📦 Copy updater.exe into final app folder
+      - name: Copy updater.exe into build folder
+        run: |
+          echo "Copying updater.exe into dist/PremediaApp"
+          Copy-Item -Path "dist\updater.exe" -Destination "dist\PremediaApp\" -Force
+          echo "✅ updater.exe copied into build folder"
+          dir dist\PremediaApp
+        shell: pwsh
 
-      # # 🧩 Verify updater presence
-      # - name: Verify updater.exe included
-      #   run: |
-      #     if (-not (Test-Path "dist\PremediaApp\updater.exe")) {
-      #       echo "❌ updater.exe missing in dist folder!"
-      #       exit 1
-      #     } else {
-      #       echo "✅ updater.exe present in dist/PremediaApp"
-      #     }
-      #   shell: pwsh
+      # 🧩 Verify updater presence
+      - name: Verify updater.exe included
+        run: |
+          if (-not (Test-Path "dist\PremediaApp\updater.exe")) {
+            echo "❌ updater.exe missing in dist folder!"
+            exit 1
+          } else {
+            echo "✅ updater.exe present in dist/PremediaApp"
+          }
+        shell: pwsh
 # ------------------------------------------------->
 
 
@@ -829,7 +815,7 @@ jobs:
       - name: Generate version.json
         run: |
           echo "Generating version.json for auto-update..."
-          $version = "1.1.43"
+          $version = "1.1.1"
           $hash = (Get-FileHash Output/PremediaApp-Setup.exe -Algorithm SHA256).Hash
           $json = @{
             version = $version
@@ -847,8 +833,8 @@ jobs:
       - name: ☁️ Upload Windows Build to S3
         run: |
           echo "Uploading Windows EXE, changelog, and version metadata..."
-          aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.43.exe --acl public-read
-          aws s3 cp Output/release_notes.txt s3://vmg-premedia-22112023/application/drn/changelogs/changelog_1.1.43.txt --acl public-read
+          aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.1.exe --acl public-read
+          aws s3 cp Output/release_notes.txt s3://vmg-premedia-22112023/application/drn/changelogs/changelog_1.1.1.txt --acl public-read
           aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read --cache-control "no-cache, max-age=60"
 
           echo "✅ Windows build uploaded successfully."
