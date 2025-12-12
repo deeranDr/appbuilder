@@ -2,7 +2,7 @@
 setlocal EnableExtensions EnableDelayedExpansion
 
 :: Args:
-::   updater.bat "C:\Program Files\PremediaApp\PremediaApp.exe" "C:\Users\vmg\AppData\Local\Temp\PremediaApp_v1.1.35.exe"
+::   updater.bat "C:\Program Files\PremediaApp\PremediaApp.exe" "C:\Users\vmg\AppData\Local\Temp\PremediaApp_v1.1.36.exe"
 
 set "OLD_EXE=%~1"
 set "NEW_FILE=%~2"

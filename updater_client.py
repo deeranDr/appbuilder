@@ -260,7 +260,12 @@ def check_for_update(current_version, exe_path):
                 return
 
             print(f"[Updater] Launching updater BAT: {bat_path}")
-            subprocess.Popen(["cmd", "/c", "start", "", bat_path, tmp_file, exe_path])
+            # subprocess.Popen(["cmd", "/c", "start", "", bat_path, tmp_file, exe_path])
+            subprocess.Popen([
+                "cmd", "/c",
+                f'start "" "{bat_path}" "{exe_path}" "{tmp_file}"'
+            ])
+
             sys.exit(0)
 
         elif os_type == "Darwin":
