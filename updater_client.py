@@ -254,19 +254,35 @@ def check_for_update(current_version, exe_path):
 
         # 🔹 Step 7: Launch updater.py (new system)
         if os_type == "Windows":
+            import os, subprocess, sys
+
             bat_path = os.path.join(os.path.dirname(exe_path), "updater.bat")
-            if not os.path.exists(bat_path):
-                messagebox.showerror("Update Error", f"Missing updater.bat at:\n{bat_path}")
-                return
 
-            print(f"[Updater] Launching updater BAT: {bat_path}")
-            # subprocess.Popen(["cmd", "/c", "start", "", bat_path, tmp_file, exe_path])
-            subprocess.Popen([
-                "cmd", "/c",
-                f'start "" "{bat_path}" "{exe_path}" "{tmp_file}"'
-            ])
+            # 1) Preflight checks (fail fast with clear message)
+            missing = []
+            if not os.path.isfile(bat_path):  
+                missing.append(f"updater.bat not found: {bat_path}")
+            if not os.path.isfile(exe_path):  
+                missing.append(f"OLD_EXE not found: {exe_path}")
+            if not os.path.isfile(tmp_file):  
+                missing.append(f"NEW_FILE not found: {tmp_file}")
+            if missing:
+                from tkinter import messagebox
+                messagebox.showerror("Update Error", "\n".join(missing))
+                sys.exit(1)
 
+            # 2) Launch silently & safely via PowerShell (no black window, admin if needed)
+            ps_cmd = (
+                'powershell -NoProfile -WindowStyle Hidden -Command '
+                f'$bat = "{bat_path}"; '
+                f'$old = "{exe_path}"; '
+                f'$new = "{tmp_file}"; '
+                'Start-Process -FilePath $bat -ArgumentList @($old,$new) -Verb RunAs'
+            )
+
+            subprocess.Popen(ps_cmd, shell=True)
             sys.exit(0)
+
 
         elif os_type == "Darwin":
             subprocess.Popen(["open", tmp_file])  # open DMG/pkg
