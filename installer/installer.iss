@@ -1,8 +1,8 @@
 [Setup]
 AppId={{9ca9316f-48ec-47dd-ab0e-dbbb86de0a9f}}
 AppName=PremediaApp
-AppVersion=1.1.10
-AppVerName=PremediaApp 1.1.10
+AppVersion=1.1.11
+AppVerName=PremediaApp 1.1.11
 DefaultDirName={localappdata}\PremediaApp
 DefaultGroupName=PremediaApp
 AllowNoIcons=yes
@@ -13,7 +13,6 @@ SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-AllUsers=no
 SetupIconFile=..\icons\premedia.ico
 UninstallDisplayIcon={app}\icons\premedia.ico
 AppPublisher=VMG Digital Pvt Ltd
