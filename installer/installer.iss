@@ -1,8 +1,8 @@
 [Setup]
 AppId={{9ca9316f-48ec-47dd-ab0e-dbbb86de0a9f}}
 AppName=PremediaApp
-AppVersion=1.1.16
-AppVerName=PremediaApp 1.1.16
+AppVersion=1.1.17
+AppVerName=PremediaApp 1.1.17
 DefaultDirName={localappdata}\PremediaApp
 DefaultGroupName=PremediaApp
 AllowNoIcons=yes
@@ -25,11 +25,14 @@ WizardSmallImageFile=..\icons\premedia-logo.bmp
 DisableWelcomePage=no
 DisableDirPage=no
 DisableProgramGroupPage=no
-DisableReadyPage=no
+DisableReadyPage=noF
 DisableFinishedPage=no
 ShowLanguageDialog=no
 CreateUninstallRegKey=yes
 Uninstallable=yes
+CloseApplications=yes
+CloseApplicationsFilter=PremediaApp.exe
+RestartApplications=no
 
 [Tasks]
 Name: autostart; Description: "Launch PremediaApp automatically on startup"; Flags: unchecked
