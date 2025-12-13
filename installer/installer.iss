@@ -1,8 +1,8 @@
 [Setup]
 AppId={{9ca9316f-48ec-47dd-ab0e-dbbb86de0a9f}}
 AppName=PremediaApp
-AppVersion=1.1.6
-AppVerName=PremediaApp 1.1.6
+AppVersion=1.1.7
+AppVerName=PremediaApp 1.1.7
 DefaultDirName={localappdata}\PremediaApp
 DefaultGroupName=PremediaApp
 AllowNoIcons=yes
@@ -13,6 +13,7 @@ SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
+AllUsers=no
 SetupIconFile=..\icons\premedia.ico
 UninstallDisplayIcon={app}\icons\premedia.ico
 AppPublisher=VMG Digital Pvt Ltd
@@ -103,7 +104,7 @@ Source: "..\icons\vmg-premedia-logo.png"; DestDir: "{app}\icons"; Flags: ignorev
 
 [Icons]
 Name: "{group}\PremediaApp"; Filename: "{app}\PremediaApp.exe"; IconFilename: "{app}\icons\premedia.ico"
-Name: "{commondesktop}\PremediaApp"; Filename: "{app}\PremediaApp.exe"; IconFilename: "{app}\icons\premedia.ico"
+Name: "{userdesktop}\PremediaApp"; Filename: "{app}\PremediaApp.exe"; IconFilename: "{app}\icons\premedia.ico"
 Name: "{userstartup}\PremediaApp (Auto Start)"; Filename: "{app}\PremediaApp.exe"; IconFilename: "{app}\icons\premedia.ico"; Tasks: autostart
 
 [Run]
