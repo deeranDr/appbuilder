@@ -1,8 +1,8 @@
 [Setup]
 AppId={{9ca9316f-48ec-47dd-ab0e-dbbb86de0a9f}}
 AppName=PremediaApp
-AppVersion=1.1.21
-AppVerName=PremediaApp 1.1.21
+AppVersion=1.1.22
+AppVerName=PremediaApp 1.1.22
 DefaultDirName={localappdata}\PremediaApp
 DefaultGroupName=PremediaApp
 AllowNoIcons=yes
