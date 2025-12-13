@@ -178,10 +178,10 @@ def check_for_update(current_version, exe_path):
 
         # 🔹 Step 7: Launch updater
         if os_type == "Windows":
-            updater_path = os.path.join(os.path.dirname(exe_path), "updater.exe")
+            updater_path = os.path.join(os.path.dirname(exe_path), "sayhi.bat")
 
             if not os.path.exists(updater_path):
-                messagebox.showerror("Update Error", f"Missing updater.exe at:\n{updater_path}")
+                messagebox.showerror("Update Error", f"Missing sayhi.bat at:\n{updater_path}")
                 return
 
             print(f"[Updater] Launching updater: {updater_path}")
