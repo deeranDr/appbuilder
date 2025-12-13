@@ -1,8 +1,8 @@
 [Setup]
 AppId={{9ca9316f-48ec-47dd-ab0e-dbbb86de0a9f}}
 AppName=PremediaApp
-AppVersion=1.1.12
-AppVerName=PremediaApp 1.1.12
+AppVersion=1.1.15
+AppVerName=PremediaApp 1.1.15
 DefaultDirName={localappdata}\PremediaApp
 DefaultGroupName=PremediaApp
 AllowNoIcons=yes
@@ -119,11 +119,13 @@ Root: HKCU; Subkey: "Software\PremediaApp"; ValueType: string; ValueName: "Insta
 [Code]
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
+  // During installation
   if CurStep = ssInstall then
   begin
     if IsTaskSelected('autostart') then
     begin
-      // Optional autostart logic
+      // Optional: Add logic for registry or task scheduler autostart if needed
+      // Currently handled by the [Icons] section
     end;
   end;
 end;
@@ -134,27 +136,29 @@ var
 begin
   if CurUninstallStep = usUninstall then
   begin
+    // Attempt to terminate PremediaApp.exe if running
     Exec('taskkill', '/F /IM "PremediaApp.exe"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+
+    // Remove autostart shortcut from Startup folder
     if DirExists(ExpandConstant('{userstartup}')) then
+    begin
       DeleteFile(ExpandConstant('{userstartup}\PremediaApp (Auto Start).lnk'));
+    end;
   end;
 end;
 
+// Correct InitializeUninstall function prototype
 function InitializeUninstall(): Boolean;
 begin
-  Result := True;
+  Result := True; // default allow uninstall
+
+  // Warn the user if app is running (optional)
   if FileExists(ExpandConstant('{app}\PremediaApp.exe')) then
+  begin
     if MsgBox('PremediaApp is currently running. It will be closed automatically during uninstall. Continue?', mbConfirmation, MB_YESNO) = IDNO then
-      Result := False;
+    begin
+      Result := False; // cancel uninstall
+    end;
+  end;
 end;
-
-// 🔹 Add this section at the bottom
-procedure InitializeSetup();
-var
-  ResultCode: Integer;
-begin
-  // Kill running instance before installation
-  Exec('taskkill', '/F /IM "PremediaApp.exe"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-end;
-
 
