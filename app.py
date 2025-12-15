@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 
 from updater_client import check_for_update
 
-APPVERSION = "1.1.28"  # your current version
+APPVERSION = "1.1.0"  # your current version
 
 
 from PySide6.QtGui import QIcon, QTextCursor, QAction, QCursor, QFont,QPixmap
@@ -27,6 +27,7 @@ import requests
 from requests.exceptions import RequestException
 import urllib3
 import json
+
 from urllib.parse import urlparse, parse_qs, quote
 from pathlib import Path
 from datetime import datetime, timedelta, timezone 

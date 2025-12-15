@@ -260,7 +260,7 @@ jobs:
       - name: ☁️ Upload macOS Build to S3
         run: |
           echo "Uploading macOS DMG and version metadata..."
-          aws s3 cp dist/PremediaApp.dmg s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.28.dmg --acl public-read
+          aws s3 cp dist/PremediaApp.dmg s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.20.dmg --acl public-read
           aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read --cache-control "no-cache, max-age=60"
           echo "✅ macOS build uploaded successfully."
         env:
@@ -651,19 +651,51 @@ jobs:
           & python -m PyInstaller app.spec --noconfirm --log-level=DEBUG | Tee-Object -FilePath "$env:GITHUB_WORKSPACE/pyinstaller_output.log"
         shell: pwsh
 
-        # 📂 Copy sayhi.bat into dist folder
-      - name: Copy sayhi.bat into build folder
+      #   # 📂 Copy sayhi.bat into dist folder
+      # - name: Copy sayhi.bat into build folder
+      #   run: |
+      #     echo "🔍 Checking if dist/PremediaApp exists..."
+      #     if (-not (Test-Path "dist\PremediaApp")) {
+      #       echo "📁 Folder not found. Creating dist/PremediaApp..."
+      #       New-Item -ItemType Directory -Force -Path "dist\PremediaApp" | Out-Null
+      #     }
+      #     echo "Copying sayhi.bat into dist/PremediaApp..."
+      #     Copy-Item -Path "sayhi.bat" -Destination "dist\PremediaApp\" -Force
+      #     echo "✅ sayhi.bat copied successfully."
+      #     dir dist\PremediaApp
+      #   shell: pwsh
+# -------------------------------------------------->
+      # ⚙️ Build updater.exe
+      - name: Build updater helper
         run: |
-          echo "🔍 Checking if dist/PremediaApp exists..."
-          if (-not (Test-Path "dist\PremediaApp")) {
-            echo "📁 Folder not found. Creating dist/PremediaApp..."
-            New-Item -ItemType Directory -Force -Path "dist\PremediaApp" | Out-Null
-          }
-          echo "Copying sayhi.bat into dist/PremediaApp..."
-          Copy-Item -Path "sayhi.bat" -Destination "dist\PremediaApp\" -Force
-          echo "✅ sayhi.bat copied successfully."
+          echo "Building updater.exe..."
+          & python -m PyInstaller --onefile updater.py
+          echo "✅ updater.exe built successfully"
+        shell: pwsh
+
+      # 📦 Copy updater.exe into final app folder
+      - name: Copy updater.exe into build folder
+        run: |
+          echo "Copying updater.exe into dist/PremediaApp"
+          Copy-Item -Path "dist\updater.exe" -Destination "dist\PremediaApp\" -Force
+          echo "✅ updater.exe copied into build folder"
           dir dist\PremediaApp
         shell: pwsh
+
+      # 🧩 Verify updater presence
+      - name: Verify updater.exe included
+        run: |
+          if (-not (Test-Path "dist\PremediaApp\updater.exe")) {
+            echo "❌ updater.exe missing in dist folder!"
+            exit 1
+          } else {
+            echo "✅ updater.exe present in dist/PremediaApp"
+          }
+        shell: pwsh
+# ------------------------------------------------->
+
+
+
 
       # Upload PyInstaller log
       - name: Upload PyInstaller log
@@ -813,7 +845,7 @@ jobs:
         shell: pwsh
         run: |
           echo "Generating version.json for auto-update..."
-          $version = "1.1.28"
+          $version = "1.1.20"
           $hash = "${{ env.sha256 }}"   # ✅ Uses lowercase hash from Step 1
           $json = @{
             version = $version
@@ -835,8 +867,8 @@ jobs:
           AWS_DEFAULT_REGION: ap-southeast-2
         run: |
           echo "Uploading Windows EXE, changelog, and version metadata..."
-          aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.28.exe --acl public-read
-          aws s3 cp Output/release_notes.txt s3://vmg-premedia-22112023/application/drn/changelogs/changelog_1.1.28.txt --acl public-read
+          aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.20.exe --acl public-read
+          aws s3 cp Output/release_notes.txt s3://vmg-premedia-22112023/application/drn/changelogs/changelog_1.1.20.txt --acl public-read
           aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read --cache-control "no-cache, max-age=60"
           echo "✅ Windows build uploaded successfully."
 
