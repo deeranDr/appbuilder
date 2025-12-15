@@ -9,37 +9,25 @@ on:
 
 jobs:
   build-macos:
-    name: 🛠️ Build macOS x86_64 App
-    runs-on: macos-15 
-    
+    name: 🛠️ Build macOS App (Intel x64)
+    runs-on: macos-15-intel
+
 
     steps:
       # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 🧩 Fix missing libintl.8.dylib on macOS 15 runners
-      - name: Install gettext for Python runtime (macOS 15 fix)
+      - name: Install system dependencies (macOS Intel)
         run: |
-          echo "🔧 Installing gettext for macOS 15..."
           brew update
           brew install gettext
-          
-          # Ensure compatibility path for Python binary
-          sudo mkdir -p /usr/local/opt
-          sudo ln -sf /opt/homebrew/opt/gettext /usr/local/opt/gettext
-
-          # Export environment paths for gettext
-          echo "LDFLAGS=-L/opt/homebrew/opt/gettext/lib" >> $GITHUB_ENV
-          echo "CPPFLAGS=-I/opt/homebrew/opt/gettext/include" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/opt/homebrew/opt/gettext/lib/pkgconfig" >> $GITHUB_ENV
-          echo "✅ gettext installed and linked successfully."
-
+          brew link --force gettext
       # Set up Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9.13'
+          python-version: '3.10'
           architecture: 'x64'
 
       # Cache pip packages
@@ -155,17 +143,18 @@ jobs:
           echo "🚀 Starting PyInstaller build at $(date)"
           echo "🔍 Checking syntax of app.py..."
           python -m py_compile app.py || (echo "❌ Syntax error in app.py" && exit 1)
-
           echo "🔎 Finding PySide6 plugins..."
           python -c "import PySide6, os; print(os.path.join(os.path.dirname(PySide6.__file__), 'Qt/plugins'))" > plugins_path.txt
           export PYSIDE6_PLUGINS=$(cat plugins_path.txt)
           echo "✅ PYSIDE6_PLUGINS=$PYSIDE6_PLUGINS"
-
           ls -ld "$PYSIDE6_PLUGINS/platforms" || (echo "❌ Platforms directory not found" && exit 1)
           ls -ld "$PYSIDE6_PLUGINS/imageformats" || (echo "❌ Imageformats directory not found" && exit 1)
-
           echo "🧱 Running PyInstaller with full icons folder..."
-          python -m PyInstaller --log-level=DEBUG --noconfirm --windowed --onedir \
+          python -m PyInstaller \
+            --log-level=DEBUG \
+            --noconfirm \
+            --windowed \
+            --onedir \
             --name PremediaApp \
             --icon=icons/premedia.icns \
             --add-data "icons:icons" \
@@ -192,7 +181,6 @@ jobs:
             --hidden-import=icons_rc \
             --runtime-hook=runtime-hook.py \
             app.py > pyinstaller.log 2>&1 || (echo "❌ PyInstaller failed" && cat pyinstaller.log && exit 1)
-
           echo "📁 dist/ contents:"
           ls -lh dist
           echo "✅ PyInstaller build completed successfully at $(date)"
@@ -236,6 +224,29 @@ jobs:
           find dist/PremediaApp.app
         shell: bash
 
+      # 📂 Copy sayhi.sh into app bundle
+      - name: Copy sayhi.sh into app bundle
+        run: |
+          echo "🔍 Checking if dist/PremediaApp.app exists..."
+          if [ ! -d "dist/PremediaApp.app" ]; then
+            echo "❌ PremediaApp.app not found!"
+            exit 1
+          fi
+
+          echo "📁 Creating MacOS directory (if missing)..."
+          mkdir -p "dist/PremediaApp.app/Contents/MacOS"
+
+          echo "📄 Copying sayhi.sh into MacOS directory..."
+          cp sayhi.sh "dist/PremediaApp.app/Contents/MacOS/sayhi.sh"
+
+          echo "🔒 Setting execute permission..."
+          chmod +x "dist/PremediaApp.app/Contents/MacOS/sayhi.sh"
+
+          echo "✅ sayhi.sh copied and made executable."
+          ls -lh "dist/PremediaApp.app/Contents/MacOS/"
+        shell: bash
+
+
       # Build DMG
       - name: Build DMG
         run: |
@@ -249,7 +260,7 @@ jobs:
       - name: ☁️ Upload macOS Build to S3
         run: |
           echo "Uploading macOS DMG and version metadata..."
-          aws s3 cp dist/PremediaApp.dmg s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.22.dmg --acl public-read
+          aws s3 cp dist/PremediaApp.dmg s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.23.dmg --acl public-read
           aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read --cache-control "no-cache, max-age=60"
           echo "✅ macOS build uploaded successfully."
         env:
@@ -257,16 +268,13 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ap-southeast-2
 
-
-
-
       # Upload DMG artifact
       - name: Upload DMG Artifact
         uses: actions/upload-artifact@v4
         with:
           name: PremediaApp-macos-dmg
           path: dist/PremediaApp.dmg
-          retention-days: 7
+          retention-days: 60
 
   
 
@@ -285,7 +293,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9.13'
+          python-version: '3.10'
           architecture: 'x64'
 
       # Install Visual Studio Build Tools for C++ (required for docopt, psd-tools)
@@ -636,6 +644,7 @@ jobs:
           python -c "import psutil; print('psutil version:', psutil.__version__)"
         shell: powershell
 
+
       - name: 🏗️ Build with PyInstaller
         run: |
           echo "Running PyInstaller with .spec at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
@@ -655,36 +664,6 @@ jobs:
           echo "✅ sayhi.bat copied successfully."
           dir dist\PremediaApp
         shell: pwsh
-# -------------------------------------------------->
-      # # ⚙️ Build updater.exe
-      # - name: Build updater helper
-      #   run: |
-      #     echo "Building updater.exe..."
-      #     & python -m PyInstaller --onefile updater.py
-      #     echo "✅ updater.exe built successfully"
-      #   shell: pwsh
-
-      # # 📦 Copy updater.exe into final app folder
-      # - name: Copy updater.exe into build folder
-      #   run: |
-      #     echo "Copying updater.exe into dist/PremediaApp"
-      #     Copy-Item -Path "dist\updater.exe" -Destination "dist\PremediaApp\" -Force
-      #     echo "✅ updater.exe copied into build folder"
-      #     dir dist\PremediaApp
-      #   shell: pwsh
-
-      # # 🧩 Verify updater presence
-      # - name: Verify updater.exe included
-      #   run: |
-      #     if (-not (Test-Path "dist\PremediaApp\updater.exe")) {
-      #       echo "❌ updater.exe missing in dist folder!"
-      #       exit 1
-      #     } else {
-      #       echo "✅ updater.exe present in dist/PremediaApp"
-      #     }
-      #   shell: pwsh
-# ------------------------------------------------->
-
 
       # Upload PyInstaller log
       - name: Upload PyInstaller log
@@ -737,7 +716,7 @@ jobs:
         with:
           name: PremediaApp-Windows-Installer
           path: Output/PremediaApp-Setup.exe
-          retention-days: 7
+          retention-days: 60
       
       ##########################################
       # 🔒 SECURITY + INTEGRITY VERIFICATION ADDITION
@@ -829,7 +808,7 @@ jobs:
       - name: Generate version.json
         run: |
           echo "Generating version.json for auto-update..."
-          $version = "1.1.22"
+          $version = "1.1.23"
           $hash = (Get-FileHash Output/PremediaApp-Setup.exe -Algorithm SHA256).Hash
           $json = @{
             version = $version
@@ -847,8 +826,8 @@ jobs:
       - name: ☁️ Upload Windows Build to S3
         run: |
           echo "Uploading Windows EXE, changelog, and version metadata..."
-          aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.22.exe --acl public-read
-          aws s3 cp Output/release_notes.txt s3://vmg-premedia-22112023/application/drn/changelogs/changelog_1.1.22.txt --acl public-read
+          aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.23.exe --acl public-read
+          aws s3 cp Output/release_notes.txt s3://vmg-premedia-22112023/application/drn/changelogs/changelog_1.1.23.txt --acl public-read
           aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read --cache-control "no-cache, max-age=60"
 
           echo "✅ Windows build uploaded successfully."

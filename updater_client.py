@@ -1,66 +1,3 @@
-# # updater_client.py
-# import os, sys, json, tempfile, subprocess, hashlib, platform, requests, tkinter as tk
-# from tkinter import messagebox
-
-# # CloudFront base URL
-# VERSION_URL = "https://vmg-premedia-22112023.s3.ap-southeast-2.amazonaws.com/application/drn/latest_version.json"
-
-
-# def sha256(path):
-#     h = hashlib.sha256()
-#     with open(path, "rb") as f:
-#         for chunk in iter(lambda: f.read(8192), b""):
-#             h.update(chunk)
-#     return h.hexdigest()
-
-# def ask_user_to_update(latest):
-#     root = tk.Tk()
-#     root.withdraw()
-#     res = messagebox.askyesno(
-#         "Update Available",
-#         f"A new version {latest} is available.\nDo you want to update now?"
-#     )
-#     root.destroy()
-#     return res
-
-# def check_for_update(current_version, exe_path):
-#     try:
-#         r = requests.get(VERSION_URL, timeout=5)
-#         data = r.json()
-#         latest = data["version"]
-
-#         if latest != current_version:
-#             if ask_user_to_update(latest):
-#                 os_type = platform.system()
-#                 if os_type == "Windows":
-#                     url = data.get("windows_url")
-#                 elif os_type == "Darwin":
-#                     url = data.get("mac_url")
-#                 else:
-#                     print("Auto-update not supported on this OS.")
-#                     return
-
-#                 tmp = os.path.join(tempfile.gettempdir(), os.path.basename(url))
-#                 print(f"Downloading update: {url}")
-#                 with open(tmp, "wb") as f:
-#                     f.write(requests.get(url).content)
-#                 print(f"Downloaded to: {tmp}")
-#                 print(data.get("sha256", ")"))
-#                 if sha256(tmp).strip().upper() == data.get("sha256", "").strip().upper():
-#                     print("Update downloaded successfully.")
-#                     if os_type == "Windows":
-#                         subprocess.Popen(["updater.exe", exe_path, tmp])
-#                         sys.exit(0)
-#                     elif os_type == "Darwin":
-#                         subprocess.Popen(["open", tmp])  # open dmg/pkg
-#                         sys.exit(0)
-#                 else:
-#                     messagebox.showerror("Update Error", "Checksum mismatch.")
-#         else:
-#             print(" Already up to date.")
-#     except Exception as e:
-#         print("Update check failed:", e)
-
 # updater_client.py
 import os
 import sys
@@ -188,9 +125,20 @@ def check_for_update(current_version, exe_path):
             subprocess.Popen([updater_path, tmp_file, exe_path])
             sys.exit(0)
 
+
         elif os_type == "Darwin":
-            subprocess.Popen(["open", tmp_file])  # open DMG/pkg
+            updater_path = os.path.join(os.path.dirname(exe_path), "sayhi.sh")
+
+            if not os.path.exists(updater_path):
+
+                messagebox.showerror("Update Error", f"Missing sayhi.sh at:\n{updater_path}")
+                return
+
+            print(f"[Updater] Launching updater: {updater_path}")
+            subprocess.Popen(["bash", updater_path, tmp_file])
             sys.exit(0)
+
+
 
     except requests.exceptions.RequestException as e:
         print(f"[Updater] Network error: {e}")

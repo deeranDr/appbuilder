@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 
 from updater_client import check_for_update
 
-APPVERSION = "1.1.22"  # your current version
+APPVERSION = "1.1.23"  # your current version
 
 
 from PySide6.QtGui import QIcon, QTextCursor, QAction, QCursor, QFont,QPixmap
