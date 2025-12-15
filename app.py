@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 
 from updater_client import check_for_update
 
-APPVERSION = "1.1.2"  # your current version
+APPVERSION = "1.1.1"  # your current version
 
 
 from PySide6.QtGui import QIcon, QTextCursor, QAction, QCursor, QFont,QPixmap
@@ -6307,6 +6307,23 @@ get_system_info()
 #         print(f"Application crashed: {e}")
 #         import traceback
 #         traceback.print_exc()
+
+# ============================================================
+# Updater Helper (Add this before the __main__ section)
+# ============================================================
+def run_updater(new_exe_path):
+    """Launch the updater.exe with paths, then exit current app."""
+    current_exe = sys.executable  # Path of the running PremediaApp.exe
+    updater_path = os.path.join(os.path.dirname(current_exe), "updater.exe")
+
+    if not os.path.exists(updater_path):
+        print("❌ updater.exe missing")
+        return
+
+    print(f"🚀 Launching updater: {updater_path}")
+    subprocess.Popen([updater_path, new_exe_path, current_exe], shell=False)
+    os._exit(0)  # Hard exit to release file lock
+
 
 
 if __name__ == "__main__":
