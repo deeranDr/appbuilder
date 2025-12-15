@@ -27,14 +27,15 @@ VERSION_URL = "https://vmg-premedia-22112023.s3.ap-southeast-2.amazonaws.com/app
 #             h.update(chunk)
 #     return h.hexdigest().upper()
 
-
 def sha256(path):
     """Compute SHA256 checksum of a file."""
     h = hashlib.sha256()
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
             h.update(chunk)
-    return h.hexdigest().upper()
+    # 🔹 Always return lowercase to match S3 JSON and prevent case mismatch
+    return h.hexdigest().lower()
+
 
 def ask_user_to_update(latest):
     """Ask user if they want to update."""
@@ -109,17 +110,30 @@ def check_for_update(current_version, exe_path):
 
         print(f"[Updater] Downloaded to temp: {tmp_file}")
 
-        # 🔹 Step 6: Verify SHA256 checksum
-        expected_hash = data.get("sha256", "").strip().upper()
-        actual_hash = sha256(tmp_file)
+        # 🔹 Step 6: Verify SHA256 checksum (case-insensitive)
+        expected_hash = data.get("sha256", "").strip().lower()
+        actual_hash = sha256(tmp_file).strip().lower()
 
         print(f"[Updater] Expected SHA256: {expected_hash}")
         print(f"[Updater] Actual SHA256:   {actual_hash}")
 
         if expected_hash and actual_hash != expected_hash:
-            messagebox.showerror("Update Error", "Checksum mismatch. Download may be corrupted.")
-            os.remove(tmp_file)
+            print(f"[Updater] ❌ Mismatch detected (len expected={len(expected_hash)}, len actual={len(actual_hash)})")
+            messagebox.showerror(
+                "Update Error",
+                f"Checksum mismatch detected.\n\n"
+                f"Expected: {expected_hash}\n"
+                f"Actual:   {actual_hash}\n\n"
+                f"The downloaded file may be corrupted. Please try again."
+            )
+            try:
+                os.remove(tmp_file)
+            except OSError:
+                pass
             return
+        else:
+            print("[Updater] ✅ SHA256 verified successfully.")
+
 
         # 🔹 Step 7: Launch updater
         if os_type == "Windows":
