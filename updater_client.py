@@ -19,6 +19,15 @@ VERSION_URL = "https://vmg-premedia-22112023.s3.ap-southeast-2.amazonaws.com/app
 #  Utility functions
 # ====================================================
 
+# def sha256(path):
+#     """Compute SHA256 checksum of a file."""
+#     h = hashlib.sha256()
+#     with open(path, "rb") as f:
+#         for chunk in iter(lambda: f.read(8192), b""):
+#             h.update(chunk)
+#     return h.hexdigest().upper()
+
+
 def sha256(path):
     """Compute SHA256 checksum of a file."""
     h = hashlib.sha256()
@@ -26,7 +35,6 @@ def sha256(path):
         for chunk in iter(lambda: f.read(8192), b""):
             h.update(chunk)
     return h.hexdigest().upper()
-
 
 def ask_user_to_update(latest):
     """Ask user if they want to update."""
