@@ -265,7 +265,15 @@ def check_for_update(current_version, exe_path):
             sys.exit(0)
 
         elif os_type == "Darwin":
-            messagebox.showinfo("Info", "Use macOS .sh logic here if needed.")
+            updater_path = os.path.join(os.path.dirname(exe_path), "updater.sh")
+
+            if not os.path.exists(updater_path):
+                messagebox.showerror("Update Error", "Missing updater.sh")
+                return
+
+            subprocess.Popen(["bash", updater_path, tmp_file])
+            sys.exit(0)
+
 
     except Exception as e:
         print(f"[Updater] ❌ Update failed: {e}")

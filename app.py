@@ -1,14 +1,39 @@
 import socket
 import uuid
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication, QDialog, QMessageBox, QProgressDialog, QTextEdit, QSystemTrayIcon,
     QMenu, QVBoxLayout, QStatusBar, QWidget, QTableWidget, QTableWidgetItem,
     QPushButton, QHBoxLayout, QHeaderView, QProgressBar, QSizePolicy,QLabel
 )
+# ------------------------>>>
+# =========================
+# Update progress dialog
+# =========================
+class UpdateProgressDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Updating PremediaApp")
+        self.setFixedSize(320, 120)
+        self.setWindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint)
+        self.setModal(True)
+
+        layout = QVBoxLayout(self)
+
+        label = QLabel("Updating application...\nPlease wait.")
+        label.setAlignment(Qt.AlignCenter)
+
+        self.progress = QProgressBar()
+        self.progress.setRange(0, 0)  # indeterminate
+
+        layout.addWidget(label)
+        layout.addWidget(self.progress)
+
+# ------------------------>>
 
 from updater_client import check_for_update
 
-APPVERSION = "1.1.6"  # your current version
+APPVERSION = "1.1.7"  # your current version
 
 
 from PySide6.QtGui import QIcon, QTextCursor, QAction, QCursor, QFont,QPixmap
@@ -6311,6 +6336,19 @@ get_system_info()
 # ============================================================
 # Updater Helper (Add this before the __main__ section)
 # ============================================================
+# def run_updater(new_exe_path):
+#     """Launch the updater.exe with paths, then exit current app."""
+#     current_exe = sys.executable  # Path of the running PremediaApp.exe
+#     updater_path = os.path.join(os.path.dirname(current_exe), "updater.exe")
+
+#     if not os.path.exists(updater_path):
+#         print("❌ updater.exe missing")
+#         return
+
+#     print(f"🚀 Launching updater: {updater_path}")
+#     subprocess.Popen([updater_path, new_exe_path, current_exe], shell=False)
+#     os._exit(0)  # Hard exit to release file lock
+
 def run_updater(new_exe_path):
     """Launch the updater.exe with paths, then exit current app."""
     current_exe = sys.executable  # Path of the running PremediaApp.exe
@@ -6320,9 +6358,16 @@ def run_updater(new_exe_path):
         print("❌ updater.exe missing")
         return
 
+    # 🔹 SHOW progress dialog BEFORE exiting
+    self.update_dialog = UpdateProgressDialog()
+    self.update_dialog.show()
+    QApplication.processEvents()   # 🔴 REQUIRED so it appears immediately
+
     print(f"🚀 Launching updater: {updater_path}")
     subprocess.Popen([updater_path, new_exe_path, current_exe], shell=False)
-    os._exit(0)  # Hard exit to release file lock
+
+    # 🔹 Exit app to release file lock
+    os._exit(0)
 
 
 
