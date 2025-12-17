@@ -1,36 +1,12 @@
 import socket
 import uuid
-
 from PySide6.QtWidgets import (
     QApplication, QDialog, QMessageBox, QProgressDialog, QTextEdit, QSystemTrayIcon,
     QMenu, QVBoxLayout, QStatusBar, QWidget, QTableWidget, QTableWidgetItem,
     QPushButton, QHBoxLayout, QHeaderView, QProgressBar, QSizePolicy,QLabel
 )
-from PySide6.QtCore import QObject, QTimer
-# ------------------------>>>
-# =========================
-# Update progress dialog
-# =========================
-APPVERSION = "1.1.20"  # your current version
-
-class UpdateChecker(QObject):
-    def __init__(self, exe_path):
-        super().__init__()
-        self.exe_path = exe_path
-
-        self.timer = QTimer(self)
-        self.timer.setInterval(3 * 60 * 60 * 1000)  # 3 hours
-        self.timer.timeout.connect(self.check_update)
-
-    def start(self):
-        self.check_update()   # ✅ check when icon clicked (after UI loads)
-        self.timer.start()    # ✅ check every 3 hours
-
-    def check_update(self):
-        from updater_client import check_for_update
-        check_for_update(APPVERSION, self.exe_path)
-# ------------------------>>
-
+from updater_client import check_for_update
+APPVERSION = "1.1.21"  # your current version
 
 from PySide6.QtGui import QIcon, QTextCursor, QAction, QCursor, QFont,QPixmap
 from PySide6.QtCore import QRunnable, QThreadPool, QEvent, QSize, QThread, QTimer, Qt, QObject, Signal, QMetaObject, Slot, QLockFile, QDir, QEventLoop
@@ -48,7 +24,6 @@ import requests
 from requests.exceptions import RequestException
 import urllib3
 import json
-
 from urllib.parse import urlparse, parse_qs, quote
 from pathlib import Path
 from datetime import datetime, timedelta, timezone 
@@ -89,18 +64,12 @@ try:
 except ImportError:
     tifffile = None
 import pytz
-
-# try:
-#     import imagecodecs
-# except ImportError:
-#     logger.warning("imagecodecs not installed, LZW-compressed TIFFs may not work")
+import shutil
 
 try:
     import imagecodecs
 except ImportError:
-    print("imagecodecs not installed, LZW-compressed TIFFs may not work")
-
-
+    logger.warning("imagecodecs not installed, LZW-compressed TIFFs may not work")
 from httpx import Timeout
 if platform.system() == "Windows":
     import pythoncom
@@ -114,11 +83,6 @@ from ssh2.session import Session
 from ssh2.sftp import LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, LIBSSH2_FXF_TRUNC
 from ssh2.exceptions import SFTPError
 
-
-
-# def fast_scp_upload(ssh_transport, src_path, dest_path):
-#     with SCPClient(ssh_transport, socket_timeout=30) as scp:
-#         scp.put(src_path, dest_path)
 # def fast_scp_upload(ssh_transport, src_path, dest_path):
 #     with SCPClient(ssh_transport, socket_timeout=30) as scp:
 #         scp.put(src_path, dest_path)
@@ -144,6 +108,7 @@ def fast_scp_upload(transport, src_path, dest_path):
     scp.close()
     
     transport.close()  # transport close to prevent leakage by Mohan
+
 
 
 
@@ -182,7 +147,7 @@ except ImportError as e:
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # === Constants ===
-BASE_DOMAIN = "https://app-uat.vmgpremedia.com"
+BASE_DOMAIN = "https://app.vmgpremedia.com"
 
 BASE_DIR = Path(__file__).parent.resolve()
 
@@ -210,7 +175,7 @@ def add_version_footer(window, version_text):
     Adds a version label to the bottom of any QDialog or QMainWindow.
     """
     from PySide6.QtWidgets import QLabel, QVBoxLayout
-    # from PySide6.QtCore import Qt
+    from PySide6.QtCore import Qt
 
     version_label = QLabel(f"Version: {version_text}")
     version_label.setAlignment(Qt.AlignRight)
@@ -265,6 +230,10 @@ LOGGEDIN_ICON_PATH = get_icon_path({
     "Linux": "login-logo.png"
 }.get(platform.system(), "login-logo.png"))
 
+# PHOTOSHOP_ICON_PATH = get_icon_path("photoshop.png") if (BASE_DIR / "icons" / "photoshop.png").exists() else ""
+# COPY_ICON_PATH = get_icon_path("copy_icon.png") if (BASE_DIR / "icons" / "folder.png").exists() else ""
+# RETRY_ICON_PATH = get_icon_path("retry.png") if (BASE_DIR / "icons" / "folder.png").exists() else ""
+# FOLDER_ICON_PATH = get_icon_path("folder.png") if (BASE_DIR / "icons" / "folder.png").exists() else ""
 
 PHOTOSHOP_ICON_PATH = get_icon_path("photoshop.png")
 COPY_ICON_PATH = get_icon_path("copy_icon.png")
@@ -310,25 +279,24 @@ DRUPAL_DB_ENTRY_API = f"{BASE_DOMAIN}/api/add/files/ir/assets"
 API_URL_LOGOUT = f"{BASE_DOMAIN}/premedia/logout"
 IS_APP_ACTIVE_UPLOAD_DOWNLOAD = False
 
-# NAS_IP = "192.168.3.20"
-# NAS_PASSWORD = "D&*qmn012@12"
-# NAS_PORT = 2022
-# NAS_SHARE = ""
-# NAS_PREFIX ='/mnt/nas/softwaremedia/IR_prod'
-# NAS_USERNAME = "irnasappprod"
-# MOUNTED_NAS_PATH ='/mnt/nas/softwaremedia/IR_prod'
-
-
-NAS_IP = "192.168.3.20"
-NAS_USERNAME = "irdev"
-NAS_PASSWORD = "i#0f!L&+@s%^qc"
+NAS_IP = "192.168.1.145"
+NAS_PASSWORD = "D&*qmn012@12"
 NAS_PORT = 22
 NAS_SHARE = ""
-NAS_PREFIX ='/mnt/nas/softwaremedia/IR_uat'
-MOUNTED_NAS_PATH ='/mnt/nas/softwaremedia/IR_uat'
+NAS_PREFIX ='/mnt/nas/softwaremedia/IR_prod'
+NAS_USERNAME = "irnasappprod"
+MOUNTED_NAS_PATH ='/mnt/nas/softwaremedia/IR_prod'
 
-# APPVERSION = "1.1.3"
 
+# NAS_IP = "192.168.1.145"
+# NAS_USERNAME = "irdev"
+# NAS_PASSWORD = "i#0f!L&+@s%^qc"
+# NAS_PORT = 22
+# NAS_SHARE = ""
+# NAS_PREFIX ='/mnt/nas/softwaremedia/IR_uat'
+# MOUNTED_NAS_PATH ='/mnt/nas/softwaremedia/IR_uat'
+
+APPVERSION = "1.1.3"
 API_POLL_INTERVAL = 5000  # 5 seconds in milliseconds
 log_window_handler = None
 # === Global State ===
@@ -342,6 +310,12 @@ LAST_API_HIT_TIME = None
 NEXT_API_HIT_TIME = None
 
 USER_SYSTEM_INFO = {}
+
+# ========== CONFIGURATION ==========
+THROTTLE_MBPS = None       # Set to e.g. 50, 100, or None for no limit (full speed)
+MIN_REQUIRED_MBPS = 50     # Optional: for warning if speed too low (in Mbps)
+PRINT_INTERVAL = 0.5       # Progress update frequency in seconds
+# ===================================
 # === Logging Setup ===
 logger = logging.getLogger("PremediaApp")
 logger.setLevel(logging.INFO)  # Only INFO and higher allowed
@@ -1091,6 +1065,12 @@ def check_nas_write_permission(sftp, nas_path):
         app_signals.append_log.emit(f"[Transfer-lang=python] Write permission check failed for {nas_path}: {e}")
         return False
 
+
+
+
+
+
+
 def process_image_in_memory(image_data, ext, full_file_path):
    
     stream = io.BytesIO(image_data)
@@ -1168,6 +1148,12 @@ def process_image_in_memory(image_data, ext, full_file_path):
         return None
     jpeg_buffer.seek(0)
     return jpeg_buffer
+ 
+
+
+
+
+
 
 def process_single_file(full_file_path):
     """Convert a single file to JPEG and move original to backup."""
@@ -1250,6 +1236,8 @@ def show_alert_notification(title, message):
     else:
         print(f"{title}: {message}")
 
+
+
 class FileConversionWorker(QObject):
     finished = Signal(str, str, str)
     error = Signal(str, str)
@@ -1298,6 +1286,7 @@ class FileConversionWorker(QObject):
         except Exception as e:
             logger.error(f"File conversion error for {self.src_path}: {e}")
             self.error.emit(str(e), Path(self.src_path).name)
+
 
 class FileWatcherWorker(QObject):
     show_dialog = Signal(str, str, str)  # Signal for title, message, dialog_type
@@ -1391,6 +1380,69 @@ class FileWatcherWorker(QObject):
         self.log_update.emit(f"[Transfer] Prepared local path: {resolved_dest_path}")
         return resolved_dest_path
 
+    # def _download_from_nas(self, src_path, dest_path, item):
+    #     task_id = item.get("id", '')
+    #     spec_id = str(item.get("spec_id"))
+    #     metadata_key = "downloaded_files_with_metadata"
+    #     cache = load_cache()
+    #     cache.setdefault(metadata_key, {})
+
+    #     try:
+    #         # --- FAST TRANSPORT ---
+    #         conn_start = time.time()
+    #         transport = paramiko.Transport((NAS_IP, NAS_PORT))
+
+    #         # Use fastest cipher
+    #         transport.get_security_options().ciphers = (
+    #             'aes128-ctr', 'aes192-ctr', 'aes256-ctr'
+    #         )
+
+    #         transport.connect(username=NAS_USERNAME, password=NAS_PASSWORD)
+
+    #         # Create high-performance SFTP client
+    #         sftp = paramiko.SFTPClient.from_transport(transport)
+
+    #         # BOOST 1: Increase Max Packet Size (default = 32 KB)
+    #         sftp.MAX_PACKET_SIZE = 327680  # 320 KB
+
+    #         # BOOST 2: Increase Max Request Size
+    #         sftp.MAX_REQUEST_SIZE = 327680  # 320 KB
+
+    #         conn_end = time.time()
+    #         connection_time = (conn_end - conn_start) * 1000
+
+    #         # Resolve NAS path
+    #         nas_path = item.get("file_path", src_path)
+
+    #         # File size
+    #         file_size = sftp.stat(nas_path).st_size
+    #         file_size_mb = file_size / (1024 * 1024)
+
+    #         # --- FAST DOWNLOAD ---
+    #         start_time = time.time()
+
+    #         # Use getfo (streaming) for faster large file downloads
+    #         with open(dest_path, 'wb') as out_f:
+    #             sftp.getfo(nas_path, out_f)
+
+    #         end_time = time.time()
+
+    #         duration = end_time - start_time
+    #         speed = file_size_mb / duration if duration > 0 else 0
+
+    #         print(f"Connection: {connection_time:.1f}ms")
+    #         print(f"Downloaded {file_size_mb:.2f} MB in {duration:.2f}s ({speed:.2f} MB/s)")
+
+    #         sftp.close()
+    #         transport.close()
+
+    #     except Exception as e:
+    #         print(f"❌ Download failed: {e}")
+    #         update_download_upload_metadata(task_id, "failed")
+    #         cache[metadata_key][spec_id]["api_response"]["request_status"] = "Download Failed"
+    #         save_cache(cache, significant_change=True)
+    #         raise
+
 
     def _download_from_nas(self, src_path, dest_path, item):
         task_id = item.get("id", '')
@@ -1453,6 +1505,177 @@ class FileWatcherWorker(QObject):
             if transport:
                 # Ensure the transport is closed after transfer is complete
                 transport.close()
+
+
+
+    
+    # def _upload_to_nas(self, src_path, dest_path, item):
+    #     task_id = item.get("id", '')
+    #     spec_id = str(item.get("spec_id"))
+    #     metadata_key = "uploaded_files_with_metadata"
+    #     cache = load_cache()
+    #     cache.setdefault(metadata_key, {})
+
+    #     try:
+    #         src_path = Path(src_path)
+    #         if not src_path.exists():
+    #             cache[metadata_key][spec_id]["api_response"]["request_status"] = "Upload Failed"
+    #             save_cache(cache, significant_change=True)
+    #             update_download_upload_metadata(task_id, "failed")
+    #             show_alert_notification("Error (U1)", "Upload failed try again.")
+    #             raise FileNotFoundError(f"Source file does not exist: {src_path}")
+
+    #         # --- FAST PARAMIKO CONNECTION ---
+    #         conn_start = time.time()
+    #         transport = paramiko.Transport((NAS_IP, NAS_PORT))   # IMPORTANT: Use SFTPGo port
+
+    #         transport.get_security_options().ciphers = (
+    #             'aes128-ctr', 'aes192-ctr', 'aes256-ctr'
+    #         )
+
+    #         transport.connect(username=NAS_USERNAME, password=NAS_PASSWORD)
+    #         sftp = paramiko.SFTPClient.from_transport(transport)
+
+    #         sftp.MAX_PACKET_SIZE = 327680
+    #         sftp.MAX_REQUEST_SIZE = 327680
+
+    #         conn_end = time.time()
+    #         print(f"Connection time: {(conn_end - conn_start) * 1000:.1f} ms")
+
+    #         # Destination path
+    #         dest_path = item.get("file_path", dest_path)
+
+    #         # Ensure directory exists
+    #         dest_dir = os.path.dirname(dest_path)
+    #         try:
+    #             sftp.stat(dest_dir)
+    #         except FileNotFoundError:
+    #             parts = dest_dir.strip("/").split("/")
+    #             current = ""
+    #             for part in parts:
+    #                 current += f"/{part}"
+    #                 try:
+    #                     sftp.stat(current)
+    #                 except FileNotFoundError:
+    #                     sftp.mkdir(current, mode=0o777)
+
+    #         file_size = src_path.stat().st_size
+    #         file_size_mb = file_size / (1024 * 1024)
+
+    #         # --- SUPER-FAST CHUNKED UPLOAD ---
+    #         print("Uploading...")
+
+    #         start_time = time.time()
+
+    #         with open(src_path, "rb") as local_file:
+    #             with sftp.open(dest_path, 'wb') as remote_file:
+    #                 while True:
+    #                     chunk = local_file.read(1024 * 1024)  # 1 MB chunks
+    #                     if not chunk:
+    #                         break
+    #                     remote_file.write(chunk)
+
+    #                 remote_file.flush()
+
+    #         sftp.chmod(dest_path, 0o777)
+
+    #         end_time = time.time()
+
+    #         duration = end_time - start_time
+    #         speed = file_size_mb / duration
+
+    #         print(f"⚡ Uploaded {file_size_mb:.2f} MB in {duration:.2f}s ({speed:.2f} MB/s)")
+
+    #         sftp.close()
+    #         transport.close()
+
+    #     except Exception as e:
+    #         print(f"❌ Upload failed: {e}")
+    #         cache[metadata_key][spec_id]["api_response"]["request_status"] = "Upload Failed"
+    #         save_cache(cache, significant_change=True)
+    #         show_alert_notification("Error (U3)", "Upload failed try again.")
+    #         raise
+
+
+#     def _upload_to_nas(self, src_path, dest_path, item):
+#         task_id = item.get("id", '')
+#         spec_id = str(item.get("spec_id"))
+#         metadata_key = "uploaded_files_with_metadata"
+#         cache = load_cache()
+#         cache.setdefault(metadata_key, {})
+#         transport = None  # initialize transport by Mohan
+#         try:
+#             src_path = Path(src_path)
+#             if not src_path.exists():
+#                 cache[metadata_key][spec_id]["api_response"]["request_status"] = "Upload Failed"
+#                 save_cache(cache, significant_change=True)
+#                 update_download_upload_metadata(task_id, "failed")
+#                 show_alert_notification("Error (U1)", "Upload failed try again.")
+#                 raise FileNotFoundError(f"Source file does not exist: {src_path}")
+
+#             # --- FAST SSH (same as before) ---
+#             conn_start = time.time()
+#             transport = paramiko.Transport((NAS_IP, NAS_PORT))
+#             transport.set_keepalive(15) # Send KeepAlive every 15 seconds by Mohan
+#             # Apply packet/window size tuning directly to the transport by Mohan
+#             transport.default_window_size = 3554432     # 32MB window by Mohan
+#             transport.default_max_packet_size = 1048576   # 1MB packet by Mohan
+#             transport.get_security_options().ciphers = (
+# 'aes128-ctr', 'aes192-ctr', 'aes256-ctr'
+#             )
+#             transport.connect(username=NAS_USERNAME, password=NAS_PASSWORD)
+#             conn_end = time.time()
+
+#             print(f"Connection time: {(conn_end - conn_start) * 1000:.1f} ms")
+
+#             # Destination: use item’s file_path if provided
+#             dest_path = item.get("file_path", dest_path)
+            
+#             # --- OPTIMIZATION BY MOHAN: ONE-SHOT DIRECTORY CREATION (FIXES THE 70S BOTTLENECK) ---
+#             # Replaced the slow recursive check with a single fast SSH command:
+#             dest_dir = os.path.dirname(dest_path)
+#             chan = transport.open_session()
+#             chan.exec_command(f'mkdir -p "{dest_dir}"') 
+#             chan.close()
+#             # --------------------------------------------------------------------------
+
+#             # --- SUPER FAST SCP UPLOAD ---
+#             start = time.time()
+#             fast_scp_upload(transport, str(src_path), dest_path)
+#             end = time.time()
+
+#             duration = end - start
+#             size_mb = src_path.stat().st_size / (1024 * 1024)
+#             speed = size_mb / duration
+
+#             print(f"⚡ Uploaded {size_mb:.2f} MB in {duration:.2f}s ({speed:.2f} MB/s)")
+            
+#             # --- FIX: SET PERMISSIONS AFTER UPLOAD ---
+#             try:
+#                 sftp = paramiko.SFTPClient.from_transport(transport)
+#                 sftp.chmod(dest_path, 0o777)
+#                 sftp.close()
+#                 logger.info(f"Set permissions to 777 for uploaded file {dest_path}")
+#             except Exception as perm_e:
+#                 logger.warning(f"Failed to set file permissions (chmod) after SCP: {perm_e}")
+#                 # Continue if chmod fails, as the file is already uploaded by SCP
+
+#             # transport.close() commented by Mohan
+
+#         except Exception as e:
+#         # Check if the error is due to Channel Closed or connection loss
+#             if "Channel closed" in str(e) or "Timeout" in str(e) or "EOF" in str(e):
+#                 logger.error(f"Upload failed due to connection issue (Channel closed/Timeout/EOF): {e}")
+#                 show_alert_notification("Upload Error", "Connection lost during upload. This may be fixed by the KeepAlive setting. Please retry.")
+                
+#             if 'transport' in locals() and transport and transport.is_active():       # transport close by Mohan
+#                 transport.close()
+                
+#             print(f"❌ Upload failed: {e}")
+#             cache[metadata_key][spec_id]["api_response"]["request_status"] = "Upload Failed"
+#             save_cache(cache, significant_change=True)
+#             show_alert_notification("Error (U3)", "Upload failed try again.")
+#             raise
 
 
     def _upload_to_nas(self, src_path, dest_path, item):
@@ -1603,6 +1826,8 @@ class FileWatcherWorker(QObject):
             if sock:
                 sock.close()
 
+
+        
     def _update_cache_and_signals(self, action_type, src_path, dest_path, item, task_id, is_nas, file_type="original"):
         cache = load_cache()
         cache.setdefault("downloaded_files", {})
@@ -2068,6 +2293,21 @@ class FileWatcherWorker(QObject):
                     logger.warning(f"Failed to open {dest_path} with Photoshop: {str(e)}")
                     self.log_update.emit(f"[Transfer] Warning: Failed to open {dest_path} with Photoshop: {str(e)}")
 
+                # Optional: Conversion to JPG
+                # cache[metadata_key][task_id]["api_response"]["request_status"] = f"{status_prefix} Conversion Started"
+                # save_cache(cache, significant_change=True)
+                # local_jpg, _ = process_single_file(dest_path)
+                # if local_jpg:
+                #     cache[metadata_key][task_id]["api_response"]["request_status"] = f"{status_prefix} Conversion Completed"
+                #     save_cache(cache, significant_change=True)
+                #     app_signals.update_file_list.emit(local_jpg, "Conversion Completed", "download", 100, False)
+                # else:
+                #     cache[metadata_key][task_id]["api_response"]["request_status"] = f"{status_prefix} Conversion Failed"
+                #     save_cache(cache, significant_change=True)
+                #     self.log_update.emit(f"[Transfer] Failed: JPG conversion failed for {dest_path}")
+
+                # self.progress_update.emit(f"{action_type} Completed (Task {task_id}): {Path(src_path).name}", dest_path, 100)
+                # app_signals.update_file_list.emit(dest_path, f"{action_type} Completed", "download", 100, is_nas_src)
 
             # ------------------------------
             # Handle Upload / Replace
@@ -2110,7 +2350,7 @@ class FileWatcherWorker(QObject):
                         'spec_id': item.get("spec_id"),
                         'creative_id': item.get("creative_id"),
                         'inventory_id': item.get("inventory_id"),
-                        'nas_path': "softwaremedia/IR_uat/" + dest_path,
+                        'nas_path': "softwaremedia/IR_prod/" + dest_path,
                     }
 
                     response = requests.post(
@@ -2216,7 +2456,9 @@ class FileWatcherWorker(QObject):
             max_retries = 3
             tasks = []
             print(f"USER_SYSTEM_INFO.get(÷,).get(mac)-----{USER_SYSTEM_INFO.get('encoded_mac', '')}")
-
+            # api_url = f"{DOWNLOAD_UPLOAD_API}?user_id={quote(user_id)}&machine_id={USER_SYSTEM_INFO.get("identifiers", {}).get("encoded_mac", "")}"
+            # machine_id = USER_SYSTEM_INFO.get("encoded_mac", "")
+            # api_url = f"{DOWNLOAD_UPLOAD_API}?user_id={quote(user_id)}&machine_id={USER_SYSTEM_INFO.get('encoded_mac', '')}"
             if isinstance(USER_SYSTEM_INFO, dict):
                 machine_id = USER_SYSTEM_INFO.get("encoded_mac", "")
             elif isinstance(USER_SYSTEM_INFO, list) and USER_SYSTEM_INFO:
@@ -2228,7 +2470,8 @@ class FileWatcherWorker(QObject):
 
             print(f"[DEBUG] USER_SYSTEM_INFO type={type(USER_SYSTEM_INFO)}, machine_id={machine_id}")
             api_url = f"{DOWNLOAD_UPLOAD_API}?user_id={quote(user_id)}&machine_id={machine_id}"
-
+            # machine_id = USER_SYSTEM_INFO.get("encoded_mac", "") if isinstance(USER_SYSTEM_INFO, dict) else ""
+            # api_url = f"{DOWNLOAD_UPLOAD_API}?user_id={quote(user_id)}&machine_id={machine_id}"
 
             for attempt in range(max_retries):
                 try:
@@ -4958,131 +5201,46 @@ class LoginDialog(QDialog):
         if self.switch_login:
             self.perform_login(self.LoginDialog_USERNAME, self.LoginDialog_PASSWORD)
  
-    # def on_login_success(self, user_info: dict, token: str):
-    #     try:
-    #         logger.info(f"Login successful for user_id: {user_info['uid']}")
-    #         app_signals.append_log.emit(f"[App] Login successful for user_id: {user_info['uid']}")
-    #         self.is_logged_in = True
-    #         user_name = user_info.get('name', user_info.get('mail', 'user'))
-
-    #         # Update parent (PremediaApp) state
-    #         if hasattr(self, 'app') and self.app:
-    #             self.app.set_logged_in_state()
-    #             self.app.start_file_watcher()
-    #             logger.debug("Updated PremediaApp state")
-    #             app_signals.append_log.emit("[Login] Updated PremediaApp state")
+    def on_login_success(self, user_info: dict, token: str):
+        try:
+            logger.info(f"Login successful for user_id: {user_info['uid']}")
+            app_signals.append_log.emit(f"[App] Login successful for user_id: {user_info['uid']}")
+            self.is_logged_in = True
+            user_name = user_info.get('name', user_info.get('mail', 'user'))
+            # Update parent (PremediaApp) state
+            if hasattr(self, 'app') and self.app:
+                self.app.set_logged_in_state()
+                self.app.start_file_watcher()
+                logger.debug("Updated PremediaApp state")
+                app_signals.append_log.emit("[Login] Updated PremediaApp state")
             
-    #         # Close progress dialog
-    #         if self.progress and self.progress.isVisible():
-    #             self.progress.close()
-    #             QApplication.processEvents()  # Ensure close is processed
-    #             logger.debug("Progress dialog closed in on_login_success")
-    #             app_signals.append_log.emit("[Login] Progress dialog closed")
+            # Close progress dialog
+            if self.progress and self.progress.isVisible():
+                self.progress.close()
+                QApplication.processEvents()  # Ensure close is processed
+                logger.debug("Progress dialog closed in on_login_success")
+                app_signals.append_log.emit("[Login] Progress dialog closed")
             
-    #         # Show success message
-    #         QMessageBox.information(self, "Login Success", f"Successfully logged in as {user_name}")
+            # Show success message
+            QMessageBox.information(self, "Login Success", f"Successfully logged in as {user_name}")
             
-    #         self.accept()
-    #         app_signals.update_status.emit("Logged in successfully")
-    #         logger.debug("on_login_success completed successfully")
-    #         app_signals.append_log.emit("[Login] on_login_success completed successfully")
-    #     except Exception as e:
-    #         logger.error(f"Error in on_login_success: {str(e)}")
-    #         app_signals.append_log.emit(f"[Login] Failed: Error in on_login_success - {str(e)}")
-    #         app_signals.update_status.emit(f"Login success handling error: {str(e)}")
-    #         # Ensure progress dialog is closed on error
-    #         if self.progress and self.progress.isVisible():
-    #             self.progress.close()
-    #             QApplication.processEvents()
-    #             logger.debug("Progress dialog closed in on_login_success error handler")
-    #             app_signals.append_log.emit("[Login] Progress dialog closed in error handler")
-    #         QMessageBox.critical(self, "Login Error", f"Error handling login success: {str(e)}")
-
-# ------------------------------------------------------------------------------------------------------------------------------>    
-def on_login_success(self, user_info: dict, token: str):
-    try:
-        logger.info(f"Login successful for user_id: {user_info['uid']}")
-        app_signals.append_log.emit(
-            f"[App] Login successful for user_id: {user_info['uid']}"
-        )
-
-        self.is_logged_in = True
-        user_name = user_info.get('name', user_info.get('mail', 'user'))
-
-        # -----------------------------
-        # Update parent app state
-        # -----------------------------
-        if hasattr(self, 'app') and self.app:
-            self.app.set_logged_in_state()
-            self.app.start_file_watcher()
-            logger.debug("Updated PremediaApp state")
-            app_signals.append_log.emit("[Login] Updated PremediaApp state")
-
-        # -----------------------------
-        # Close progress dialog
-        # -----------------------------
-        if self.progress and self.progress.isVisible():
-            self.progress.close()
-            QApplication.processEvents()
-            logger.debug("Progress dialog closed in on_login_success")
-            app_signals.append_log.emit("[Login] Progress dialog closed")
-
-        # -----------------------------
-        # Show success message
-        # -----------------------------
-        QMessageBox.information(
-            self,
-            "Login Success",
-            f"Successfully logged in as {user_name}"
-        )
-
-        # =====================================================
-        # ✅ START UPDATE CHECKER (ONCE)
-        # =====================================================
-        if hasattr(self, 'app') and self.app and not hasattr(self.app, "_update_checker_started"):
-            self.app.update_checker = UpdateChecker(sys.executable)
-            self.app.update_checker.start()
-            self.app._update_checker_started = True
-            logger.info("[Updater] UpdateChecker started (once)")
-            app_signals.append_log.emit("[Updater] UpdateChecker started (once)")
-        # =====================================================
-
-        # Close login dialog
-        self.accept()
-        app_signals.update_status.emit("Logged in successfully")
-
-        logger.debug("on_login_success completed successfully")
-        app_signals.append_log.emit(
-            "[Login] on_login_success completed successfully"
-        )
-
-    except Exception as e:
-        logger.error(f"Error in on_login_success: {str(e)}")
-        app_signals.append_log.emit(
-            f"[Login] Failed: Error in on_login_success - {str(e)}"
-        )
-        app_signals.update_status.emit(
-            f"Login success handling error: {str(e)}"
-        )
-
-        # Ensure progress dialog is closed on error
-        if self.progress and self.progress.isVisible():
-            self.progress.close()
-            QApplication.processEvents()
-            logger.debug("Progress dialog closed in on_login_success error handler")
-            app_signals.append_log.emit(
-                "[Login] Progress dialog closed in error handler"
-            )
-
-        QMessageBox.critical(
-            self,
-            "Login Error",
-            f"Error handling login success: {str(e)}"
-        )
+            self.accept()
+            app_signals.update_status.emit("Logged in successfully")
+            logger.debug("on_login_success completed successfully")
+            app_signals.append_log.emit("[Login] on_login_success completed successfully")
+        except Exception as e:
+            logger.error(f"Error in on_login_success: {str(e)}")
+            app_signals.append_log.emit(f"[Login] Failed: Error in on_login_success - {str(e)}")
+            app_signals.update_status.emit(f"Login success handling error: {str(e)}")
+            # Ensure progress dialog is closed on error
+            if self.progress and self.progress.isVisible():
+                self.progress.close()
+                QApplication.processEvents()
+                logger.debug("Progress dialog closed in on_login_success error handler")
+                app_signals.append_log.emit("[Login] Progress dialog closed in error handler")
+            QMessageBox.critical(self, "Login Error", f"Error handling login success: {str(e)}")
 
 
-
-# ---------------------------------------------------------------DEERA------------------------------------------------>
 
     def on_login_failed(self, error):
         try:
@@ -6155,7 +6313,6 @@ class PremediaApp(QApplication):
             logger.info("Cache clear cancelled by user")
             app_signals.update_status.emit("Cache clear cancelled")
 
-
     def quit(self):
         global HTTP_SESSION, FILE_WATCHER_RUNNING
         try:
@@ -6519,17 +6676,6 @@ class PremediaApp(QApplication):
 
 get_system_info()
 
-# if __name__ == "__main__":
-#     try:
-#         key = parse_custom_url()
-#         app = PremediaApp(key)
-        
-#         sys.exit(app.exec())
-#     except Exception as e:
-#         print(f"Application crashed: {e}")
-#         import traceback
-#         traceback.print_exc()
-
 def run_updater(new_exe_path):
     """Launch the updater.exe with paths, then exit current app."""
     current_exe = sys.executable  # Path of the running PremediaApp.exe
@@ -6549,7 +6695,7 @@ if __name__ == "__main__":
     try:
         # 🔹 Step 1: Check for updates before launching GUI
         exe_path = sys.executable
-        # check_for_update(APPVERSION, exe_path)
+        check_for_update(APPVERSION, exe_path)
 
         # 🔹 Step 2: Launch your main GUI
         key = parse_custom_url()
@@ -6559,5 +6705,3 @@ if __name__ == "__main__":
         print(f"Application crashed: {e}")
         import traceback
         traceback.print_exc()
-        
-
