@@ -34,7 +34,7 @@ class UpdateProgressDialog(QDialog):
 
 from updater_client import check_for_update
 
-APPVERSION = "1.1.9"  # your current version
+APPVERSION = "1.1.10"  # your current version
 
 
 from PySide6.QtGui import QIcon, QTextCursor, QAction, QCursor, QFont,QPixmap
