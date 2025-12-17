@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QMenu, QVBoxLayout, QStatusBar, QWidget, QTableWidget, QTableWidgetItem,
     QPushButton, QHBoxLayout, QHeaderView, QProgressBar, QSizePolicy,QLabel
 )
+
 # ------------------------>>>
 # =========================
 # Update progress dialog
@@ -33,7 +34,7 @@ class UpdateProgressDialog(QDialog):
 
 from updater_client import check_for_update
 
-APPVERSION = "1.1.8"  # your current version
+APPVERSION = "1.1.9"  # your current version
 
 
 from PySide6.QtGui import QIcon, QTextCursor, QAction, QCursor, QFont,QPixmap
@@ -6349,38 +6350,99 @@ get_system_info()
 #     subprocess.Popen([updater_path, new_exe_path, current_exe], shell=False)
 #     os._exit(0)  # Hard exit to release file lock
 
+# ============================================================
+# Updater Helper
+# ============================================================
+
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QApplication
+
+UPDATE_CHECK_INTERVAL_MS = 1 * 60 * 60 * 1000  # 3 hours
+
+_update_in_progress = False
+
+
+def check_update_background():
+    """
+    Check for updates.
+    - Runs on app startup
+    - Runs every 1 hours while app is running
+    """
+    global _update_in_progress
+
+    if _update_in_progress:
+        return
+
+    try:
+        print("🔍 [Updater] Checking for updates...")
+        check_for_update(APPVERSION, sys.executable)
+    except Exception as e:
+        print("⚠️ [Updater] Update check failed:", e)
+
+
+def start_update_check_timer(app):
+    """
+    Start 3-hour recurring update check (Qt-safe).
+    """
+    timer = QTimer(app)                 # parented → not GC'd
+    timer.setInterval(UPDATE_CHECK_INTERVAL_MS)
+    timer.timeout.connect(check_update_background)
+    timer.start()
+
+    app.update_timer = timer            # extra safety
+    print("⏰ [Updater] 3-hour update timer started")
+
+
 def run_updater(new_exe_path):
-    """Launch the updater.exe with paths, then exit current app."""
-    current_exe = sys.executable  # Path of the running PremediaApp.exe
+    """
+    Launch updater.exe, show progress UI, then exit app.
+    """
+    global _update_in_progress
+    _update_in_progress = True
+
+    current_exe = sys.executable
     updater_path = os.path.join(os.path.dirname(current_exe), "updater.exe")
 
     if not os.path.exists(updater_path):
         print("❌ updater.exe missing")
         return
 
-    # 🔹 SHOW progress dialog BEFORE exiting
-    self.update_dialog = UpdateProgressDialog()
-    self.update_dialog.show()
-    QApplication.processEvents()   # 🔴 REQUIRED so it appears immediately
+    # 🔹 Show progress dialog
+    update_dialog = UpdateProgressDialog()
+    update_dialog.show()
+    QApplication.processEvents()
 
     print(f"🚀 Launching updater: {updater_path}")
-    subprocess.Popen([updater_path, new_exe_path, current_exe], shell=False)
+    subprocess.Popen(
+        [updater_path, new_exe_path, current_exe],
+        shell=False
+    )
 
-    # 🔹 Exit app to release file lock
-    os._exit(0)
+    # 🔹 Allow UI to render before exit
+    QTimer.singleShot(1000, lambda: os._exit(0))
 
 
+# ============================================================
+# Main Entry
+# ============================================================
 
 if __name__ == "__main__":
     try:
-        # 🔹 Step 1: Check for updates before launching GUI
-        exe_path = sys.executable
-        check_for_update(APPVERSION, exe_path)
+        app = QApplication(sys.argv)
 
-        # 🔹 Step 2: Launch your main GUI
+        # ✅ ALWAYS check for update on app open
+        check_update_background()
+
+        # 🔹 Launch main application
         key = parse_custom_url()
-        app = PremediaApp(key)
+        main_window = PremediaApp(key)
+        main_window.show()
+
+        # 🔁 Check again every 3 hours while running
+        start_update_check_timer(app)
+
         sys.exit(app.exec())
+
     except Exception as e:
         print(f"Application crashed: {e}")
         import traceback
