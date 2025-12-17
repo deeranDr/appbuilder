@@ -1,40 +1,35 @@
 import socket
 import uuid
-from PySide6.QtCore import Qt
+
 from PySide6.QtWidgets import (
     QApplication, QDialog, QMessageBox, QProgressDialog, QTextEdit, QSystemTrayIcon,
     QMenu, QVBoxLayout, QStatusBar, QWidget, QTableWidget, QTableWidgetItem,
     QPushButton, QHBoxLayout, QHeaderView, QProgressBar, QSizePolicy,QLabel
 )
-
+from PySide6.QtCore import QObject, QTimer
 # ------------------------>>>
 # =========================
 # Update progress dialog
 # =========================
-# class UpdateProgressDialog(QDialog):
-#     def __init__(self):
-#         super().__init__()
-#         self.setWindowTitle("Updating PremediaApp")
-#         self.setFixedSize(320, 120)
-#         self.setWindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint)
-#         self.setModal(True)
+APPVERSION = "1.1.18"  # your current version
 
-#         layout = QVBoxLayout(self)
+class UpdateChecker(QObject):
+    def __init__(self, exe_path):
+        super().__init__()
+        self.exe_path = exe_path
 
-#         label = QLabel("Updating application...\nPlease wait.")
-#         label.setAlignment(Qt.AlignCenter)
+        self.timer = QTimer(self)
+        self.timer.setInterval(3 * 60 * 60 * 1000)  # 3 hours
+        self.timer.timeout.connect(self.check_update)
 
-#         self.progress = QProgressBar()
-#         self.progress.setRange(0, 0)  # indeterminate
+    def start(self):
+        self.check_update()   # ✅ check when icon clicked (after UI loads)
+        self.timer.start()    # ✅ check every 3 hours
 
-#         layout.addWidget(label)
-#         layout.addWidget(self.progress)
-
+    def check_update(self):
+        from updater_client import check_for_update
+        check_for_update(APPVERSION, self.exe_path)
 # ------------------------>>
-
-from updater_client import check_for_update
-
-APPVERSION = "1.1.17"  # your current version
 
 
 from PySide6.QtGui import QIcon, QTextCursor, QAction, QCursor, QFont,QPixmap
@@ -94,12 +89,18 @@ try:
 except ImportError:
     tifffile = None
 import pytz
-import shutil
+
+# try:
+#     import imagecodecs
+# except ImportError:
+#     logger.warning("imagecodecs not installed, LZW-compressed TIFFs may not work")
 
 try:
     import imagecodecs
 except ImportError:
-    logger.warning("imagecodecs not installed, LZW-compressed TIFFs may not work")
+    print("imagecodecs not installed, LZW-compressed TIFFs may not work")
+
+
 from httpx import Timeout
 if platform.system() == "Windows":
     import pythoncom
@@ -108,9 +109,44 @@ if platform.system() == "Windows":
     import win32con
 from scp import SCPClient
 
-def fast_scp_upload(ssh_transport, src_path, dest_path):
-    with SCPClient(ssh_transport, socket_timeout=30) as scp:
-        scp.put(src_path, dest_path)
+
+from ssh2.session import Session
+from ssh2.sftp import LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, LIBSSH2_FXF_TRUNC
+from ssh2.exceptions import SFTPError
+
+
+
+# def fast_scp_upload(ssh_transport, src_path, dest_path):
+#     with SCPClient(ssh_transport, socket_timeout=30) as scp:
+#         scp.put(src_path, dest_path)
+# def fast_scp_upload(ssh_transport, src_path, dest_path):
+#     with SCPClient(ssh_transport, socket_timeout=30) as scp:
+#         scp.put(src_path, dest_path)
+
+def fast_scp_upload(transport, src_path, dest_path):
+
+    # ---- MAXIMIZE UPLOAD WINDOW ----
+    transport.default_window_size = 33554432     # 32MB window by Mohan
+    transport.default_max_packet_size = 1048576  # 1MB packet by Mohan
+    transport.packetizer.REKEY_BYTES = pow(2, 40)
+    transport.packetizer.REKEY_PACKETS = pow(2, 40)
+
+    # ---- OPTIMIZED SCP ----
+    scp = SCPClient(
+        transport,
+        socket_timeout=30,
+        buff_size=1048576   # 1 MB chunks increased by Mohan
+    )
+
+    # ---- PUT IS FASTER THAN PUTFO ON WINDOWS ----
+    scp.put(src_path, dest_path)
+
+    scp.close()
+    
+    transport.close()  # transport close to prevent leakage by Mohan
+
+
+
 
 SUPPORTED_EXTENSIONS = [
     "jpg", "jpeg", "png", "gif", "tiff", "tif", "bmp", "webp",
@@ -174,7 +210,7 @@ def add_version_footer(window, version_text):
     Adds a version label to the bottom of any QDialog or QMainWindow.
     """
     from PySide6.QtWidgets import QLabel, QVBoxLayout
-    from PySide6.QtCore import Qt
+    # from PySide6.QtCore import Qt
 
     version_label = QLabel(f"Version: {version_text}")
     version_label.setAlignment(Qt.AlignRight)
@@ -1356,141 +1392,216 @@ class FileWatcherWorker(QObject):
         return resolved_dest_path
 
 
-    def _download_from_nas(self, src_path, dest_path, item, max_retries=1):
+    def _download_from_nas(self, src_path, dest_path, item):
         task_id = item.get("id", '')
         spec_id = str(item.get("spec_id"))
         metadata_key = "downloaded_files_with_metadata"
         cache = load_cache()
         cache.setdefault(metadata_key, {})
+        
+        transport = None  # Initialize transport by Mohan
 
-        nas_path = item.get("file_path", src_path)
+        try:
+            # --- FAST SSH CONNECTION ---
+            conn_start = time.time()
+            transport = paramiko.Transport((NAS_IP, NAS_PORT))
+            
+            # Apply packet/window size tuning directly to the transport changes by Mohan
+            transport.default_window_size = 2147483647     # 128MB window
+            transport.default_max_packet_size = 65536  # 64MB packet
+            transport.packetizer.REKEY_BYTES = pow(2, 40)
+            transport.packetizer.REKEY_PACKETS = pow(2, 40)
 
-        attempt = 0
+            transport.get_security_options().ciphers = (
+                'aes128-ctr', 'aes192-ctr', 'aes256-ctr'
+            )
 
-        while attempt <= max_retries:
-            try:
-                # ---------------------------------------------
-                # Only update status if this is NOT the first try
-                # ---------------------------------------------
-                if attempt > 0:
-                    print(f"🔁 Retry attempt {attempt}/{max_retries}")
-                    update_download_upload_metadata(task_id, "Re-attempting the download")
+            transport.connect(username=NAS_USERNAME, password=NAS_PASSWORD)
+            conn_end = time.time()
 
-                # --- FAST SSH CONNECTION ---
-                conn_start = time.time()
-                transport = paramiko.Transport((NAS_IP, NAS_PORT))
+            print(f"Connection time: {(conn_end - conn_start) * 1000:.1f} ms")
 
-                transport.get_security_options().ciphers = (
-                    'aes128-ctr', 'aes192-ctr', 'aes256-ctr'
-                )
+            # Resolve NAS path
+            nas_path = item.get("file_path", src_path)
 
-                transport.connect(username=NAS_USERNAME, password=NAS_PASSWORD)
-                conn_end = time.time()
+            # --- SUPER FAST SCP DOWNLOAD --- buffer size increased by Mohan
+            start_time = time.time()
 
-                print(f"Connection time: {(conn_end - conn_start) * 1000:.1f} ms")
+            with SCPClient(transport, socket_timeout=30, buff_size=8388608) as scp:
+                scp.get(nas_path, local_path=dest_path)
 
-                # --- SUPER FAST SCP DOWNLOAD ---
-                start_time = time.time()
+            end_time = time.time()
 
-                with SCPClient(transport, socket_timeout=30) as scp:
-                    scp.get(nas_path, local_path=dest_path)
+            # calculate file size + speed
+            size_mb = Path(dest_path).stat().st_size / (1024 * 1024)
+            duration = end_time - start_time
+            speed = size_mb / duration if duration > 0 else 0
 
-                end_time = time.time()
+            print(f"📥 SCP Downloaded {size_mb:.2f} MB in {duration:.2f}s ({speed:.2f} MB/s)")
 
-                size_mb = Path(dest_path).stat().st_size / (1024 * 1024)
-                duration = end_time - start_time
-                speed = size_mb / duration if duration > 0 else 0
+            #transport.close() commented by Mohan
 
-                print(f"📥 SCP Downloaded {size_mb:.2f} MB in {duration:.2f}s ({speed:.2f} MB/s)")
-
+        except Exception as e:
+            print(f"❌ Download failed: {e}")
+            cache[metadata_key][spec_id]["api_response"]["request_status"] = "Download Failed"
+            save_cache(cache, significant_change=True)
+            update_download_upload_metadata(task_id, "failed")
+            raise
+            
+        # Transport close by Mohan
+        finally:
+            if transport:
+                # Ensure the transport is closed after transfer is complete
                 transport.close()
-                return  # SUCCESS
-
-            except Exception as e:
-                print(f"❌ Download failed (Attempt {attempt}): {e}")
-
-                if attempt == max_retries:
-                    # FINAL FAILURE
-                    cache[metadata_key][spec_id]["api_response"]["request_status"] = "Download Failed"
-                    save_cache(cache, significant_change=True)
-                    update_download_upload_metadata(task_id, "failed")
-                    raise
-
-                attempt += 1
-                time.sleep(2)  # Retry delay
 
 
-    def _upload_to_nas(self, src_path, dest_path, item, max_retries=1):
+    def _upload_to_nas(self, src_path, dest_path, item):
         task_id = item.get("id", '')
         spec_id = str(item.get("spec_id"))
         metadata_key = "uploaded_files_with_metadata"
-
         cache = load_cache()
         cache.setdefault(metadata_key, {})
-
+        
         src_path = Path(src_path)
+        if not src_path.exists():
+            cache[metadata_key][spec_id]["api_response"]["request_status"] = "Upload Failed"
+            save_cache(cache, significant_change=True)
+            update_download_upload_metadata(task_id, "failed")
+            show_alert_notification("Error (U1)", "Upload failed try again.")
+            raise FileNotFoundError(f"Source file does not exist: {src_path}")
 
-        attempt = 0
+        dest_path = item.get("file_path", dest_path)
+        dest_dir = os.path.dirname(dest_path)
+        
+        sock = None
+        session = None
+        sftp = None
+        try:
+            # ---------- CONNECTION ----------
+            start_conn = time.time()
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((NAS_IP, NAS_PORT))
+            
+            session = Session()
+            session.handshake(sock)
+            
+            session.userauth_password(NAS_USERNAME, NAS_PASSWORD)
+            
+            if not session.userauth_authenticated():
+                raise Exception("SSH authentication failed")
+            
+            end_conn = time.time()
+            print(f"Connection established in {(end_conn - start_conn) * 1000:.1f} ms")
 
-        while attempt <= max_retries:
-            try:
-                # First check only on first attempt
-                if attempt == 0:
-                    if not src_path.exists():
-                        cache[metadata_key][spec_id]["api_response"]["request_status"] = "Upload Failed"
-                        save_cache(cache, significant_change=True)
-                        update_download_upload_metadata(task_id, "failed")
-                        show_alert_notification("Error (U1)", "Upload failed try again.")
-                        raise FileNotFoundError(f"Source file does not exist: {src_path}")
+            # ---------- SFTP INIT ----------
+            sftp = session.sftp_init()
+
+            # ---------- NO DIRECTORY CREATION ----------
+            print(f"Directory creation skipped (as requested).")
+            print(f"Assuming destination directory already exists: {dest_dir}")
+            print(f"If upload fails with 'No such file or directory', create the folder manually on the NAS.\n")
+
+            # ---------- UPLOAD WITH LIVELY PROGRESS ----------
+            upload_start = time.time()
+            
+            flags = LIBSSH2_FXF_CREAT | LIBSSH2_FXF_WRITE | LIBSSH2_FXF_TRUNC
+            chunk_size = 4 * 1024 * 1024  # 4 MB chunks
+            
+            file_size = src_path.stat().st_size
+            total_mb = file_size / (1024 * 1024)
+            
+            # Throttling setup
+            bytes_per_second = None
+            if THROTTLE_MBPS is not None:
+                bytes_per_second = THROTTLE_MBPS * 1024 * 1024 / 8
+            
+            transferred = 0
+            last_print_time = time.time()
+            chunk_start_time = time.time()
+            
+            print(f"Uploading: {src_path.name} ({total_mb:.2f} MB)")
+            print(f"Destination: {dest_path}")
+            print("Progress: 0.0% | Speed: 0.00 MB/s | Transferred: 0.00 / {:.2f} MB".format(total_mb))
+            
+            with open(src_path, "rb") as local_file, \
+                sftp.open(dest_path, flags, 0o644) as remote_file:
+                
+                while True:
+                    data = local_file.read(chunk_size)
+                    if not data:
+                        break
+                    
+                    remote_file.write(data)
+                    transferred += len(data)
+                    
+                    # Throttling
+                    if bytes_per_second:
+                        chunk_end_time = time.time()
+                        elapsed = chunk_end_time - chunk_start_time
+                        expected = len(data) / bytes_per_second
+                        if elapsed < expected:
+                            time.sleep(expected - elapsed)
+                        chunk_start_time = time.time()
+                    
+                    # Real-time progress
+                    current_time = time.time()
+                    if current_time - last_print_time >= PRINT_INTERVAL:
+                        elapsed_total = current_time - upload_start
+                        transferred_mb = transferred / (1024 * 1024)
+                        percentage = (transferred / file_size) * 100 if file_size > 0 else 100
+                        speed = transferred_mb / elapsed_total if elapsed_total > 0 else 0
+                        
+                        print(f"Progress: {percentage:6.1f}% | Speed: {speed:6.2f} MB/s | "
+                            f"Transferred: {transferred_mb:8.2f} / {total_mb:.2f} MB", end="\r")
+                        
+                        last_print_time = current_time
+            
+            # Final results
+            upload_end = time.time()
+            duration = upload_end - upload_start
+            final_mb = file_size / (1024 * 1024)
+            final_speed = final_mb / duration if duration > 0 else 0
+            
+            print(f"\n\nUpload completed: {final_mb:.2f} MB in {duration:.2f}s ({final_speed:.2f} MB/s)")
+            
+            if MIN_REQUIRED_MBPS:
+                actual_mbps = final_speed * 8
+                if actual_mbps < MIN_REQUIRED_MBPS:
+                    print(f"WARNING: Upload speed {actual_mbps:.1f} Mbps is below required {MIN_REQUIRED_MBPS} Mbps!")
                 else:
-                    # Retry case → update status
-                    print(f"🔁 Retry attempt {attempt}/{max_retries}")
-                    update_download_upload_metadata(task_id, "Re-attempting the upload")
+                    print(f"Speed {actual_mbps:.1f} Mbps meets minimum requirement ✓")
 
-                # --- FAST SSH ---
-                conn_start = time.time()
-                transport = paramiko.Transport((NAS_IP, NAS_PORT))
-                transport.get_security_options().ciphers = (
-                    'aes128-ctr', 'aes192-ctr', 'aes256-ctr'
-                )
-                transport.connect(username=NAS_USERNAME, password=NAS_PASSWORD)
-                conn_end = time.time()
-
-                print(f"Connection time: {(conn_end - conn_start) * 1000:.1f} ms")
-
-                # Destination path
-                dest_path = item.get("file_path", dest_path)
-
-                # --- SUPER FAST SCP UPLOAD ---
-                start = time.time()
-                fast_scp_upload(transport, str(src_path), dest_path)
-                end = time.time()
-
-                duration = end - start
-                size_mb = src_path.stat().st_size / (1024 * 1024)
-                speed = size_mb / duration if duration > 0 else 0
-
-                print(f"⚡ Uploaded {size_mb:.2f} MB in {duration:.2f}s ({speed:.2f} MB/s)")
-
-                transport.close()
-                return  # SUCCESS → exit
-
-            except Exception as e:
-                print(f"❌ Upload failed (Attempt {attempt}): {e}")
-
-                if attempt == max_retries:
-                    # Final failure
-                    cache[metadata_key][spec_id]["api_response"]["request_status"] = "Upload Failed"
-                    save_cache(cache, significant_change=True)
-                    update_download_upload_metadata(task_id, "failed")
-                    show_alert_notification("Error (U3)", "Upload failed try again.")
-                    raise
-
-                attempt += 1
-                time.sleep(2)   # small delay before retry
-
-
-
+        except Exception as e:
+            print("\nUpload failed!")
+            error_details = str(e)
+            
+            if sftp:
+                sftp_err = sftp.last_error()
+                if sftp_err != 0:
+                    error_details += f" | SFTP error code: {sftp_err}"
+                    if sftp_err == 2:
+                        error_details += " (No such file or directory – destination folder missing)"
+                    elif sftp_err == 3:
+                        error_details += " (Permission denied)"
+            
+            if session:
+                sess_err = session.last_errno()
+                if sess_err != 0:
+                    error_details += f" | Session error code: {sess_err}"
+            
+            print(f"Error: {error_details or 'Unknown error'}")
+            print("Tip: If 'No such file or directory', create the full destination folder manually on the NAS once.")
+            traceback.print_exc()
+            
+            cache[metadata_key][spec_id]["api_response"]["request_status"] = "Upload Failed"
+            save_cache(cache, significant_change=True)
+            show_alert_notification("Error (U3)", "Upload failed – check if destination folder exists.")
+            raise
+        finally:
+            if session:
+                session.disconnect()
+            if sock:
+                sock.close()
 
     def _update_cache_and_signals(self, action_type, src_path, dest_path, item, task_id, is_nas, file_type="original"):
         cache = load_cache()
@@ -4847,46 +4958,131 @@ class LoginDialog(QDialog):
         if self.switch_login:
             self.perform_login(self.LoginDialog_USERNAME, self.LoginDialog_PASSWORD)
  
-    def on_login_success(self, user_info: dict, token: str):
-        try:
-            logger.info(f"Login successful for user_id: {user_info['uid']}")
-            app_signals.append_log.emit(f"[App] Login successful for user_id: {user_info['uid']}")
-            self.is_logged_in = True
-            user_name = user_info.get('name', user_info.get('mail', 'user'))
-            # Update parent (PremediaApp) state
-            if hasattr(self, 'app') and self.app:
-                self.app.set_logged_in_state()
-                self.app.start_file_watcher()
-                logger.debug("Updated PremediaApp state")
-                app_signals.append_log.emit("[Login] Updated PremediaApp state")
+    # def on_login_success(self, user_info: dict, token: str):
+    #     try:
+    #         logger.info(f"Login successful for user_id: {user_info['uid']}")
+    #         app_signals.append_log.emit(f"[App] Login successful for user_id: {user_info['uid']}")
+    #         self.is_logged_in = True
+    #         user_name = user_info.get('name', user_info.get('mail', 'user'))
+
+    #         # Update parent (PremediaApp) state
+    #         if hasattr(self, 'app') and self.app:
+    #             self.app.set_logged_in_state()
+    #             self.app.start_file_watcher()
+    #             logger.debug("Updated PremediaApp state")
+    #             app_signals.append_log.emit("[Login] Updated PremediaApp state")
             
-            # Close progress dialog
-            if self.progress and self.progress.isVisible():
-                self.progress.close()
-                QApplication.processEvents()  # Ensure close is processed
-                logger.debug("Progress dialog closed in on_login_success")
-                app_signals.append_log.emit("[Login] Progress dialog closed")
+    #         # Close progress dialog
+    #         if self.progress and self.progress.isVisible():
+    #             self.progress.close()
+    #             QApplication.processEvents()  # Ensure close is processed
+    #             logger.debug("Progress dialog closed in on_login_success")
+    #             app_signals.append_log.emit("[Login] Progress dialog closed")
             
-            # Show success message
-            QMessageBox.information(self, "Login Success", f"Successfully logged in as {user_name}")
+    #         # Show success message
+    #         QMessageBox.information(self, "Login Success", f"Successfully logged in as {user_name}")
             
-            self.accept()
-            app_signals.update_status.emit("Logged in successfully")
-            logger.debug("on_login_success completed successfully")
-            app_signals.append_log.emit("[Login] on_login_success completed successfully")
-        except Exception as e:
-            logger.error(f"Error in on_login_success: {str(e)}")
-            app_signals.append_log.emit(f"[Login] Failed: Error in on_login_success - {str(e)}")
-            app_signals.update_status.emit(f"Login success handling error: {str(e)}")
-            # Ensure progress dialog is closed on error
-            if self.progress and self.progress.isVisible():
-                self.progress.close()
-                QApplication.processEvents()
-                logger.debug("Progress dialog closed in on_login_success error handler")
-                app_signals.append_log.emit("[Login] Progress dialog closed in error handler")
-            QMessageBox.critical(self, "Login Error", f"Error handling login success: {str(e)}")
+    #         self.accept()
+    #         app_signals.update_status.emit("Logged in successfully")
+    #         logger.debug("on_login_success completed successfully")
+    #         app_signals.append_log.emit("[Login] on_login_success completed successfully")
+    #     except Exception as e:
+    #         logger.error(f"Error in on_login_success: {str(e)}")
+    #         app_signals.append_log.emit(f"[Login] Failed: Error in on_login_success - {str(e)}")
+    #         app_signals.update_status.emit(f"Login success handling error: {str(e)}")
+    #         # Ensure progress dialog is closed on error
+    #         if self.progress and self.progress.isVisible():
+    #             self.progress.close()
+    #             QApplication.processEvents()
+    #             logger.debug("Progress dialog closed in on_login_success error handler")
+    #             app_signals.append_log.emit("[Login] Progress dialog closed in error handler")
+    #         QMessageBox.critical(self, "Login Error", f"Error handling login success: {str(e)}")
+
+# ------------------------------------------------------------------------------------------------------------------------------>    
+def on_login_success(self, user_info: dict, token: str):
+    try:
+        logger.info(f"Login successful for user_id: {user_info['uid']}")
+        app_signals.append_log.emit(
+            f"[App] Login successful for user_id: {user_info['uid']}"
+        )
+
+        self.is_logged_in = True
+        user_name = user_info.get('name', user_info.get('mail', 'user'))
+
+        # -----------------------------
+        # Update parent app state
+        # -----------------------------
+        if hasattr(self, 'app') and self.app:
+            self.app.set_logged_in_state()
+            self.app.start_file_watcher()
+            logger.debug("Updated PremediaApp state")
+            app_signals.append_log.emit("[Login] Updated PremediaApp state")
+
+        # -----------------------------
+        # Close progress dialog
+        # -----------------------------
+        if self.progress and self.progress.isVisible():
+            self.progress.close()
+            QApplication.processEvents()
+            logger.debug("Progress dialog closed in on_login_success")
+            app_signals.append_log.emit("[Login] Progress dialog closed")
+
+        # -----------------------------
+        # Show success message
+        # -----------------------------
+        QMessageBox.information(
+            self,
+            "Login Success",
+            f"Successfully logged in as {user_name}"
+        )
+
+        # =====================================================
+        # ✅ START UPDATE CHECKER (ONCE)
+        # =====================================================
+        if hasattr(self, 'app') and self.app and not hasattr(self.app, "_update_checker_started"):
+            self.app.update_checker = UpdateChecker(sys.executable)
+            self.app.update_checker.start()
+            self.app._update_checker_started = True
+            logger.info("[Updater] UpdateChecker started (once)")
+            app_signals.append_log.emit("[Updater] UpdateChecker started (once)")
+        # =====================================================
+
+        # Close login dialog
+        self.accept()
+        app_signals.update_status.emit("Logged in successfully")
+
+        logger.debug("on_login_success completed successfully")
+        app_signals.append_log.emit(
+            "[Login] on_login_success completed successfully"
+        )
+
+    except Exception as e:
+        logger.error(f"Error in on_login_success: {str(e)}")
+        app_signals.append_log.emit(
+            f"[Login] Failed: Error in on_login_success - {str(e)}"
+        )
+        app_signals.update_status.emit(
+            f"Login success handling error: {str(e)}"
+        )
+
+        # Ensure progress dialog is closed on error
+        if self.progress and self.progress.isVisible():
+            self.progress.close()
+            QApplication.processEvents()
+            logger.debug("Progress dialog closed in on_login_success error handler")
+            app_signals.append_log.emit(
+                "[Login] Progress dialog closed in error handler"
+            )
+
+        QMessageBox.critical(
+            self,
+            "Login Error",
+            f"Error handling login success: {str(e)}"
+        )
 
 
+
+# ---------------------------------------------------------------DEERA------------------------------------------------>
 
     def on_login_failed(self, error):
         try:
@@ -6353,7 +6549,7 @@ if __name__ == "__main__":
     try:
         # 🔹 Step 1: Check for updates before launching GUI
         exe_path = sys.executable
-        check_for_update(APPVERSION, exe_path)
+        # check_for_update(APPVERSION, exe_path)
 
         # 🔹 Step 2: Launch your main GUI
         key = parse_custom_url()
