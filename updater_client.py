@@ -22,16 +22,46 @@ def sha256(path):
             h.update(chunk)
     return h.hexdigest().lower()
 
+# def ask_user_to_update(latest):
+#     """Ask user if they want to update."""
+#     root = tk.Tk()
+#     root.withdraw()
+#     res = messagebox.askyesno(
+#         "Update Available",
+#         f"A new version {latest} is available.\nDo you want to update now?"
+#     )
+#     root.destroy()
+#     return res
 def ask_user_to_update(latest):
-    """Ask user if they want to update."""
     root = tk.Tk()
-    root.withdraw()
-    res = messagebox.askyesno(
-        "Update Available",
-        f"A new version {latest} is available.\nDo you want to update now?"
+    root.title("Update Available")
+    root.resizable(False, False)
+
+    label = tk.Label(
+        root,
+        text=f"A new version {latest} is available.\nClick YES to update now.",
+        padx=20,
+        pady=15
     )
-    root.destroy()
-    return res
+    label.pack()
+
+    def on_yes():
+        root.destroy()
+
+    btn = tk.Button(root, text="Yes", width=10, command=on_yes)
+    btn.pack(pady=10)
+
+    root.mainloop()
+    return True
+
+
+
+
+
+
+
+
+
 
 def check_for_update(current_version, exe_path):
     """Check S3 JSON for update and apply if needed."""
