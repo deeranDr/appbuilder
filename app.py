@@ -34,7 +34,7 @@ class UpdateProgressDialog(QDialog):
 
 from updater_client import check_for_update
 
-APPVERSION = "1.1.10"  # your current version
+APPVERSION = "1.1.11"  # your current version
 
 
 from PySide6.QtGui import QIcon, QTextCursor, QAction, QCursor, QFont,QPixmap
@@ -6353,20 +6353,20 @@ get_system_info()
 # ============================================================
 # Updater Helper
 # ============================================================
-
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
-UPDATE_CHECK_INTERVAL_MS = 1 * 60 * 60 * 1000  # 3 hours
+UPDATE_CHECK_INTERVAL_MS = 3 * 60 * 60 * 1000  # 3 hours
 
 _update_in_progress = False
+_update_dialog = None
 
 
 def check_update_background():
     """
     Check for updates.
     - Runs on app startup
-    - Runs every 1 hours while app is running
+    - Runs every 3 hours while app is running
     """
     global _update_in_progress
 
@@ -6382,22 +6382,22 @@ def check_update_background():
 
 def start_update_check_timer(app):
     """
-    Start 3-hour recurring update check (Qt-safe).
+    Start recurring update check (Qt-safe).
     """
-    timer = QTimer(app)                 # parented → not GC'd
+    timer = QTimer(app)
     timer.setInterval(UPDATE_CHECK_INTERVAL_MS)
     timer.timeout.connect(check_update_background)
     timer.start()
 
-    app.update_timer = timer            # extra safety
-    print("⏰ [Updater] 3-hour update timer started")
+    app.update_timer = timer
+    print("⏰ [Updater] Update timer started")
 
 
 def run_updater(new_exe_path):
     """
     Launch updater.exe, show progress UI, then exit app.
     """
-    global _update_in_progress
+    global _update_in_progress, _update_dialog
     _update_in_progress = True
 
     current_exe = sys.executable
@@ -6407,9 +6407,9 @@ def run_updater(new_exe_path):
         print("❌ updater.exe missing")
         return
 
-    # 🔹 Show progress dialog
-    update_dialog = UpdateProgressDialog()
-    update_dialog.show()
+    # Show progress dialog (keep reference)
+    _update_dialog = UpdateProgressDialog()
+    _update_dialog.show()
     QApplication.processEvents()
 
     print(f"🚀 Launching updater: {updater_path}")
@@ -6418,7 +6418,7 @@ def run_updater(new_exe_path):
         shell=False
     )
 
-    # 🔹 Allow UI to render before exit
+    # Give UI time, then exit
     QTimer.singleShot(1000, lambda: os._exit(0))
 
 
@@ -6430,15 +6430,14 @@ if __name__ == "__main__":
     try:
         app = QApplication(sys.argv)
 
-        # ✅ ALWAYS check for update on app open
-        check_update_background()
-
-        # 🔹 Launch main application
         key = parse_custom_url()
         main_window = PremediaApp(key)
         main_window.show()
 
-        # 🔁 Check again every 3 hours while running
+        # 🔹 Check for update AFTER UI loads
+        QTimer.singleShot(0, check_update_background)
+
+        # 🔁 Periodic update checks
         start_update_check_timer(app)
 
         sys.exit(app.exec())
