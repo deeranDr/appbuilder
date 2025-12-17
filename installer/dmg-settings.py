@@ -1,6 +1,6 @@
 # installer/dmg-settings.py
 
-application = "PremediaApp"
+application = "PremediaApp.app"
 background = "installer-assets/dmg-background.bmp"
 
 volume_name = "PremediaApp"
