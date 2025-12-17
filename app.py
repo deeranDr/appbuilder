@@ -11,7 +11,7 @@ from PySide6.QtCore import QObject, QTimer
 # =========================
 # Update progress dialog
 # =========================
-APPVERSION = "1.1.18"  # your current version
+APPVERSION = "1.1.19"  # your current version
 
 class UpdateChecker(QObject):
     def __init__(self, exe_path):
