@@ -6462,18 +6462,37 @@ def run_updater(new_exe_path):
 
 
 
+# if __name__ == "__main__":
+#     try:
+#         # 🔹 Step 1: Check for updates before launching GUI
+#         exe_path = sys.executable
+#         check_for_update(APPVERSION, exe_path)
+
+#         # 🔹 Step 2: Launch your main GUI
+#         key = parse_custom_url()
+#         app = PremediaApp(key)
+#         sys.exit(app.exec())
+#     except Exception as e:
+#         print(f"Application crashed: {e}")
+#         import traceback
+#         traceback.print_exc()
+        
+
 if __name__ == "__main__":
     try:
-        # 🔹 Step 1: Check for updates before launching GUI
-        exe_path = sys.executable
-        check_for_update(APPVERSION, exe_path)
+        app = QApplication(sys.argv)
 
-        # 🔹 Step 2: Launch your main GUI
+        # 🔹 Launch GUI FIRST
         key = parse_custom_url()
-        app = PremediaApp(key)
+        main_window = PremediaApp(key)
+        main_window.show()
+
+        # 🔹 Then check for update (safe now, 3-hour gated)
+        check_for_update(APPVERSION, sys.executable)
+
         sys.exit(app.exec())
+
     except Exception as e:
         print(f"Application crashed: {e}")
         import traceback
-        traceback.print_exc()
-        
+        traceback.print_exc()        
