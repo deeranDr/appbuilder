@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QPushButton, QHBoxLayout, QHeaderView, QProgressBar, QSizePolicy,QLabel
 )
 from updater_client import check_for_update
-APPVERSION = "1.1.22"  # your current version
+APPVERSION = "1.1.23"  # your current version
 
 from PySide6.QtGui import QIcon, QTextCursor, QAction, QCursor, QFont,QPixmap
 from PySide6.QtCore import QRunnable, QThreadPool, QEvent, QSize, QThread, QTimer, Qt, QObject, Signal, QMetaObject, Slot, QLockFile, QDir, QEventLoop
@@ -296,7 +296,7 @@ NAS_SHARE = ""
 NAS_PREFIX ='/mnt/nas/softwaremedia/IR_uat'
 MOUNTED_NAS_PATH ='/mnt/nas/softwaremedia/IR_uat'
 
-APPVERSION = "1.1.3"
+# APPVERSION = "1.1.3"
 API_POLL_INTERVAL = 5000  # 5 seconds in milliseconds
 log_window_handler = None
 # === Global State ===
@@ -6661,7 +6661,7 @@ class PremediaApp(QApplication):
             msg_box.setWindowTitle(title)
             msg_box.setText(message)
             if dialog_type.lower() == "error":
-                msg_box.setIcon(QMessageBox.Critical)
+                msg_box.setIcon(QMessageBox.Critical) 
             else:
                 msg_box.setIcon(QMessageBox.Information)
             msg_box.setStandardButtons(QMessageBox.Ok)
