@@ -308,6 +308,55 @@ jobs:
                    "PremediaApp" dist/PremediaApp.dmg
         shell: bash
 
+
+#s3____generate_version_json_mac
+      - name: Update macOS section in version.json
+        shell: bash
+        run: |
+          set -e
+
+          echo "Downloading latest version.json from S3 (if exists)..."
+          aws s3 cp s3://vmg-premedia-22112023/application/drn/latest_version.json version.json \
+            || echo "version.json not found, using template"
+
+          if [ ! -f version.json ]; then
+            echo "Creating base version.json template"
+            cat > version.json <<'EOF'
+          {
+            "version": "1.1.33",
+            "release_notes": "Performance improvements and stability fixes",
+            "mandatory": false,
+            "windows": { "url": "", "sha256": "" },
+            "mac": { "url": "", "sha256": "" }
+          }
+          EOF
+              fi
+
+              MAC_URL="https://vmg-premedia-22112023.s3.ap-southeast-2.amazonaws.com/application/drn/macos/PremediaApp_v1.1.33.dmg"
+              MAC_SHA=$(shasum -a 256 dist/PremediaApp.dmg | awk '{print $1}')
+
+              echo "macOS SHA256: $MAC_SHA"
+
+              jq --arg url "$MAC_URL" --arg sha "$MAC_SHA" \
+                '.mac.url = $url | .mac.sha256 = $sha' \
+                version.json > version.tmp.json
+
+              mv version.tmp.json version.json
+              cat version.json
+
+              # Verify the update
+              if ! jq -e --arg url "$MAC_URL" --arg sha "$MAC_SHA" \
+                '.mac.url == $url and .mac.sha256 == $sha' version.json > /dev/null; then
+                echo "Failed to update mac section in version.json"
+                exit 1
+              fi
+
+
+
+
+
+
+
       - name: ☁️ Upload macOS Build to S3
         shell: bash
         run: |
@@ -325,7 +374,9 @@ jobs:
 
           echo "☁️ Uploading macOS DMG..."
           aws s3 cp dist/PremediaApp.dmg \
-            s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.32.dmg
+            s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.33.dmg
+            --acl public-read
+
 
           echo "☁️ Uploading latest_version.json..."
           aws s3 cp version.json \
@@ -911,22 +962,60 @@ jobs:
           echo "Status: Digitally signed and verified" >> Output/release_notes.txt
 
       # 🧾 Step 8: Generate version.json automatically (lowercase hash)
-      - name: Generate version.json
+      # - name: Generate version.json
+      #   shell: pwsh
+      #   run: |
+      #     echo "Generating version.json for auto-update..."
+      #     $version = "1.1.33"
+      #     $hash = "${{ env.sha256 }}"   # ✅ Uses lowercase hash from Step 1
+      #     $json = @{
+      #       version = $version
+      #       windows_url = "https://vmg-premedia-22112023.s3.ap-southeast-2.amazonaws.com/application/drn/windows/PremediaApp_v$version.exe"
+      #       mac_url = "https://vmg-premedia-22112023.s3.ap-southeast-2.amazonaws.com/application/drn/macos/PremediaApp_v$version.dmg"
+      #       sha256 = $hash
+      #       release_notes = "Performance improvements and stability fixes"
+      #       mandatory = $false
+      #     } | ConvertTo-Json -Depth 3
+      #     $json | Out-File -FilePath version.json -Encoding utf8
+      #     Get-Content version.json
+
+      - name: Update Windows section in version.json
         shell: pwsh
         run: |
-          echo "Generating version.json for auto-update..."
-          $version = "1.1.32"
-          $hash = "${{ env.sha256 }}"   # ✅ Uses lowercase hash from Step 1
-          $json = @{
-            version = $version
-            windows_url = "https://vmg-premedia-22112023.s3.ap-southeast-2.amazonaws.com/application/drn/windows/PremediaApp_v$version.exe"
-            mac_url = "https://vmg-premedia-22112023.s3.ap-southeast-2.amazonaws.com/application/drn/macos/PremediaApp_v$version.dmg"
-            sha256 = $hash
-            release_notes = "Performance improvements and stability fixes"
-            mandatory = $false
-          } | ConvertTo-Json -Depth 3
-          $json | Out-File -FilePath version.json -Encoding utf8
-          Get-Content version.json
+          Write-Host "Downloading latest version.json from S3 (if exists)..."
+          aws s3 cp s3://vmg-premedia-22112023/application/drn/latest_version.json version.json `
+            || Write-Host "version.json not found, using template"
+
+          if (-not (Test-Path version.json)) {
+            Write-Host "Creating base version.json template"
+            $baseJson = @"
+            {
+              "version": "1.1.33",
+              "release_notes": "Performance improvements and stability fixes",
+              "mandatory": false,
+              "windows": { "url": "", "sha256": "" },
+              "mac": { "url": "", "sha256": "" }
+            }
+          "@
+                $baseJson | Out-File version.json -Encoding utf8
+              }
+
+              $winUrl = "https://vmg-premedia-22112023.s3.ap-southeast-2.amazonaws.com/application/drn/windows/PremediaApp_v1.1.33.exe"
+              $winSha = "${{ env.sha256 }}"
+
+              jq --arg url "$winUrl" --arg sha "$winSha" `
+                '.windows.url = $url | .windows.sha256 = $sha' `
+                version.json > version.tmp.json
+
+              Move-Item version.tmp.json version.json -Force
+              Get-Content version.json
+
+              # Verify the update
+              $content = Get-Content version.json -Raw | ConvertFrom-Json
+              if ($content.windows.url -ne $winUrl -or $content.windows.sha256 -ne $winSha) {
+                throw "Failed to update version.json correctly"
+              }
+
 
       # ☁️ Step 9: Upload Windows Build to S3
       - name: ☁️ Upload Windows Build to S3
@@ -937,8 +1026,8 @@ jobs:
           AWS_DEFAULT_REGION: ap-southeast-2
         run: |
           echo "Uploading Windows EXE, changelog, and version metadata..."
-          aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.32.exe --acl public-read
-          aws s3 cp Output/release_notes.txt s3://vmg-premedia-22112023/application/drn/changelogs/changelog_1.1.32.txt --acl public-read
+          aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.33.exe --acl public-read
+          aws s3 cp Output/release_notes.txt s3://vmg-premedia-22112023/application/drn/changelogs/changelog_1.1.33.txt --acl public-read
           aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read --cache-control "no-cache, max-age=60"
           echo "✅ Windows build uploaded successfully."
 

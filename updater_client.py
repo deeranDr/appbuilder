@@ -89,7 +89,8 @@ def check_for_update(current_version, exe_path):
 
 
         # 🔹 Verify checksum
-        expected = data.get("sha256", "").strip().lower()
+        # expected = data.get("sha256", "").strip().lower()  ///------------->
+        expected = expected_sha
         actual = sha256(tmp_file)
         if expected and actual != expected:
             messagebox.showerror("Checksum Error", "Downloaded file failed verification.")
