@@ -54,10 +54,26 @@ def check_for_update(current_version, exe_path):
             return
 
         os_type = platform.system()
-        download_url = data.get("windows_url") if os_type == "Windows" else data.get("mac_url")
-        if not download_url:
-            messagebox.showerror("Update Error", "No download URL in JSON.")
+
+        if os_type == "Windows":
+            platform_data = data.get("windows", {})
+        elif os_type == "Darwin":
+            platform_data = data.get("mac", {})
+        else:
+            messagebox.showerror("Update Error", f"Unsupported OS: {os_type}")
             return
+
+        download_url = platform_data.get("url")
+        expected_sha = platform_data.get("sha256", "").lower()
+
+        if not download_url or not expected_sha:
+            messagebox.showerror(
+                "Update Error",
+                "Invalid update metadata for this platform."
+            )
+            return
+
+
 
         # 🔹 Download new EXE
         tmp_file = os.path.join(tempfile.gettempdir(), os.path.basename(download_url))
@@ -69,6 +85,8 @@ def check_for_update(current_version, exe_path):
                     if chunk:
                         f.write(chunk)
         print(f"[Updater] Downloaded to: {tmp_file}")
+
+
 
         # 🔹 Verify checksum
         expected = data.get("sha256", "").strip().lower()
