@@ -264,8 +264,8 @@ jobs:
         shell: bash
 
 
-      # # 📂 Copy sayhi.sh into app bundle
-      # - name: Copy sayhi.sh into app bundle
+      # # 📂 Copy updater.sh into app bundle
+      # - name: Copy updater.sh into app bundle
       #   run: |
       #     echo "🔍 Checking if dist/PremediaApp.app exists..."
       #     if [ ! -d "dist/PremediaApp.app" ]; then
@@ -276,27 +276,27 @@ jobs:
       #     echo "📁 Creating MacOS directory (if missing)..."
       #     mkdir -p "dist/PremediaApp.app/Contents/MacOS"
 
-      #     echo "📄 Copying sayhi.sh into MacOS directory..."
-      #     cp sayhi.sh "dist/PremediaApp.app/Contents/MacOS/sayhi.sh"
+      #     echo "📄 Copying updater.sh into MacOS directory..."
+      #     cp updater.sh "dist/PremediaApp.app/Contents/MacOS/updater.sh"
 
       #     echo "🔒 Setting execute permission..."
-      #     chmod +x "dist/PremediaApp.app/Contents/MacOS/sayhi.sh"
+      #     chmod +x "dist/PremediaApp.app/Contents/MacOS/updater.sh"
 
-      #     echo "✅ sayhi.sh copied and made executable."
+      #     echo "✅ updater.sh copied and made executable."
       #     ls -lh "dist/PremediaApp.app/Contents/MacOS/"
       #   shell: bash
 
 
-      # 📂 Copy sayhi.sh into app bundle
-      - name: Copy sayhi.sh into app bundle
+      # 📂 Copy updater.sh into app bundle
+      - name: Copy updater.sh into app bundle
         shell: bash
         run: |
           set -euo pipefail
 
           APP_PATH="dist/PremediaApp.app"
           MACOS_DIR="$APP_PATH/Contents/MacOS"
-          SCRIPT_SRC="sayhi.sh"
-          SCRIPT_DST="$MACOS_DIR/sayhi.sh"
+          SCRIPT_SRC="updater.sh"
+          SCRIPT_DST="$MACOS_DIR/updater.sh"
 
           echo "🔍 Verifying app bundle exists..."
           if [[ ! -d "$APP_PATH" ]]; then
@@ -304,22 +304,22 @@ jobs:
             exit 1
           fi
 
-          echo "🔍 Verifying sayhi.sh exists..."
+          echo "🔍 Verifying updater.sh exists..."
           if [[ ! -f "$SCRIPT_SRC" ]]; then
-            echo "❌ ERROR: sayhi.sh not found in repository root"
+            echo "❌ ERROR: updater.sh not found in repository root"
             exit 1
           fi
 
           echo "📁 Ensuring MacOS directory exists..."
           mkdir -p "$MACOS_DIR"
 
-          echo "📄 Copying sayhi.sh into app bundle..."
+          echo "📄 Copying updater.sh into app bundle..."
           cp "$SCRIPT_SRC" "$SCRIPT_DST"
 
           echo "🔒 Setting executable permission..."
           chmod 755 "$SCRIPT_DST"
 
-          echo "✅ sayhi.sh installed successfully:"
+          echo "✅ updater.sh installed successfully:"
           ls -lh "$MACOS_DIR"
 
 
@@ -336,7 +336,7 @@ jobs:
       - name: ☁️ Upload macOS Build to S3
         run: |
           echo "Uploading macOS DMG and version metadata..."
-          aws s3 cp dist/PremediaApp.dmg s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.24.dmg --acl public-read
+          aws s3 cp dist/PremediaApp.dmg s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.25.dmg --acl public-read
           aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read --cache-control "no-cache, max-age=60"
           echo "✅ macOS build uploaded successfully."
         env:
@@ -921,7 +921,7 @@ jobs:
         shell: pwsh
         run: |
           echo "Generating version.json for auto-update..."
-          $version = "1.1.24"
+          $version = "1.1.25"
           $hash = "${{ env.sha256 }}"   # ✅ Uses lowercase hash from Step 1
           $json = @{
             version = $version
@@ -943,7 +943,7 @@ jobs:
           AWS_DEFAULT_REGION: ap-southeast-2
         run: |
           echo "Uploading Windows EXE, changelog, and version metadata..."
-          aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.24.exe --acl public-read
+          aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.25.exe --acl public-read
           aws s3 cp Output/release_notes.txt s3://vmg-premedia-22112023/application/drn/changelogs/changelog_1.1.24.txt --acl public-read
           aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read --cache-control "no-cache, max-age=60"
           echo "✅ Windows build uploaded successfully."
