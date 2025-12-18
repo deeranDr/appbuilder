@@ -242,51 +242,6 @@ jobs:
           path: plugins_path.txt
         if: always()
 
-      # Sign app
-      - name: Sign App
-        run: codesign --deep --force --verbose --sign - dist/PremediaApp.app
-        if: ${{ env.APPLE_CERTIFICATE == '' }}
-        shell: bash
-
-      - name: Sign App with Developer ID
-        run: |
-          codesign --deep --force --verbose --sign "Developer ID Application: Your Name" --entitlements entitlements.plist dist/PremediaApp.app
-        if: ${{ env.APPLE_CERTIFICATE != '' }}
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-        shell: bash
-
-      # Inspect built .app
-      - name: Inspect built .app
-        run: |
-          du -sh dist/PremediaApp.app
-          find dist/PremediaApp.app
-        shell: bash
-
-
-      # # 📂 Copy updater.sh into app bundle
-      # - name: Copy updater.sh into app bundle
-      #   run: |
-      #     echo "🔍 Checking if dist/PremediaApp.app exists..."
-      #     if [ ! -d "dist/PremediaApp.app" ]; then
-      #       echo "❌ PremediaApp.app not found!"
-      #       exit 1
-      #     fi
-
-      #     echo "📁 Creating MacOS directory (if missing)..."
-      #     mkdir -p "dist/PremediaApp.app/Contents/MacOS"
-
-      #     echo "📄 Copying updater.sh into MacOS directory..."
-      #     cp updater.sh "dist/PremediaApp.app/Contents/MacOS/updater.sh"
-
-      #     echo "🔒 Setting execute permission..."
-      #     chmod +x "dist/PremediaApp.app/Contents/MacOS/updater.sh"
-
-      #     echo "✅ updater.sh copied and made executable."
-      #     ls -lh "dist/PremediaApp.app/Contents/MacOS/"
-      #   shell: bash
-
-
       # 📂 Copy updater.sh into app bundle
       - name: Copy updater.sh into app bundle
         shell: bash
@@ -322,6 +277,26 @@ jobs:
           echo "✅ updater.sh installed successfully:"
           ls -lh "$MACOS_DIR"
 
+      # Sign app
+      - name: Sign App
+        run: codesign --deep --force --verbose --sign - dist/PremediaApp.app
+        if: ${{ env.APPLE_CERTIFICATE == '' }}
+        shell: bash
+
+      - name: Sign App with Developer ID
+        run: |
+          codesign --deep --force --verbose --sign "Developer ID Application: Your Name" --entitlements entitlements.plist dist/PremediaApp.app
+        if: ${{ env.APPLE_CERTIFICATE != '' }}
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+        shell: bash
+
+      # Inspect built .app
+      - name: Inspect built .app
+        run: |
+          du -sh dist/PremediaApp.app
+          find dist/PremediaApp.app
+        shell: bash
 
       # Build DMG
       - name: Build DMG
@@ -336,7 +311,7 @@ jobs:
       - name: ☁️ Upload macOS Build to S3
         run: |
           echo "Uploading macOS DMG and version metadata..."
-          aws s3 cp dist/PremediaApp.dmg s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.29.dmg --acl public-read
+          aws s3 cp dist/PremediaApp.dmg s3://vmg-premedia-22112023/application/drn/macos/PremediaApp_v1.1.30.dmg --acl public-read
           aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read --cache-control "no-cache, max-age=60"
           echo "✅ macOS build uploaded successfully."
         env:
@@ -921,7 +896,7 @@ jobs:
         shell: pwsh
         run: |
           echo "Generating version.json for auto-update..."
-          $version = "1.1.29"
+          $version = "1.1.30"
           $hash = "${{ env.sha256 }}"   # ✅ Uses lowercase hash from Step 1
           $json = @{
             version = $version
@@ -943,8 +918,8 @@ jobs:
           AWS_DEFAULT_REGION: ap-southeast-2
         run: |
           echo "Uploading Windows EXE, changelog, and version metadata..."
-          aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.29.exe --acl public-read
-          aws s3 cp Output/release_notes.txt s3://vmg-premedia-22112023/application/drn/changelogs/changelog_1.1.29.txt --acl public-read
+          aws s3 cp Output/PremediaApp-Setup.exe s3://vmg-premedia-22112023/application/drn/windows/PremediaApp_v1.1.30.exe --acl public-read
+          aws s3 cp Output/release_notes.txt s3://vmg-premedia-22112023/application/drn/changelogs/changelog_1.1.30.txt --acl public-read
           aws s3 cp version.json s3://vmg-premedia-22112023/application/drn/latest_version.json --acl public-read --cache-control "no-cache, max-age=60"
           echo "✅ Windows build uploaded successfully."
 
