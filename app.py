@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QPushButton, QHBoxLayout, QHeaderView, QProgressBar, QSizePolicy,QLabel
 )
 from updater_client import check_for_update
-APPVERSION = "1.1.47"  # your current version
+APPVERSION = "1.2.1"  # your current version
 
 from PySide6.QtGui import QIcon, QTextCursor, QAction, QCursor, QFont,QPixmap
 from PySide6.QtCore import QRunnable, QThreadPool, QEvent, QSize, QThread, QTimer, Qt, QObject, Signal, QMetaObject, Slot, QLockFile, QDir, QEventLoop
@@ -205,25 +205,25 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # === Server and environment Pointing global variables ===
 
-# BASE_DOMAIN = "https://app.vmgpremedia.com"
-# NAS_IP = "192.168.1.145"
-# NAS_PASSWORD = "D&*qmn012@12"
-# NAS_PORT = 22
-# NAS_SHARE = ""
-# NAS_PREFIX ='/mnt/nas/softwaremedia/IR_prod'
-# NAS_USERNAME = "irnasappprod"
-# MOUNTED_NAS_PATH ='/mnt/nas/softwaremedia/IR_prod'
-# NAS_PATH = "softwaremedia/IR_prod/"
-
-BASE_DOMAIN = "https://app-uat.vmgpremedia.com"
+BASE_DOMAIN = "https://app.vmgpremedia.com"
 NAS_IP = "192.168.1.145"
-NAS_USERNAME = "irdev"
-NAS_PASSWORD = "i#0f!L&+@s%^qc"
+NAS_PASSWORD = "D&*qmn012@12"
 NAS_PORT = 22
 NAS_SHARE = ""
-NAS_PREFIX ='/mnt/nas/softwaremedia/IR_uat'
-MOUNTED_NAS_PATH ='/mnt/nas/softwaremedia/IR_uat'
-NAS_PATH = "softwaremedia/IR_uat/"
+NAS_PREFIX ='/mnt/nas/softwaremedia/IR_prod'
+NAS_USERNAME = "irnasappprod"
+MOUNTED_NAS_PATH ='/mnt/nas/softwaremedia/IR_prod'
+NAS_PATH = "softwaremedia/IR_prod/"
+
+# BASE_DOMAIN = "https://app-uat.vmgpremedia.com"
+# NAS_IP = "192.168.1.145"
+# NAS_USERNAME = "irdev"
+# NAS_PASSWORD = "i#0f!L&+@s%^qc"
+# NAS_PORT = 22
+# NAS_SHARE = ""
+# NAS_PREFIX ='/mnt/nas/softwaremedia/IR_uat'
+# MOUNTED_NAS_PATH ='/mnt/nas/softwaremedia/IR_uat'
+# NAS_PATH = "softwaremedia/IR_uat/"
 
 
 BASE_DIR = Path(__file__).parent.resolve()
